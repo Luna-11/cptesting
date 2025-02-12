@@ -63,6 +63,7 @@ export default function CalendarApp() {
 
         {/* Calendar Section */}
         <div className="p-4 flex-1 w-2/3">
+        <div> this is me changing</div>
           <div className="bg-white shadow-md rounded-lg p-4">
             <FullCalendar
               plugins={[dayGridPlugin, interactionPlugin]}

@@ -42,6 +42,11 @@ export default function Sidebar({ isSidebarOpen, setIsSidebarOpen }: SidebarProp
           </Link>
         </li>
         <li className="mb-4">
+          <Link href="/VR" className="text-white hover:text-gray-400">
+            VR
+          </Link>
+        </li>
+        <li className="mb-4">
           <Link href="/settings" className="text-white hover:text-gray-400">
             Settings
           </Link>

@@ -1,4 +1,3 @@
-// src/app/calendar/page.tsx
 "use client";
 import { useState } from "react";
 import FullCalendar from "@fullcalendar/react";
@@ -35,15 +34,20 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-3xl font-bold">Calendar Page</h1>
-      <FullCalendar
-        plugins={[dayGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
-        events={events}
-        dateClick={handleDateClick}
-        eventClick={handleEventClick}
-      />
+    <div className="p-4 flex justify-center">
+      <div style={{ width: "85%", height: "80vh", margin: "0 auto" }}>
+        <h1 className="text-3xl font-bold text-center mb-4">Calendar Page</h1>
+        <div className="border p-4 rounded shadow-lg bg-white">
+          <FullCalendar
+            plugins={[dayGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            events={events}
+            dateClick={handleDateClick}
+            eventClick={handleEventClick}
+            height="70vh" // Increased height
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -32,6 +32,11 @@ export default function Sidebar({ isSidebarOpen, setIsSidebarOpen }: SidebarProp
           </Link>
         </li>
         <li className="mb-4">
+          <Link href="/todo" className="text-white hover:text-gray-400">
+            to-do-list
+          </Link>
+        </li>
+        <li className="mb-4">
           <Link href="/settings" className="text-white hover:text-gray-400">
             Settings
           </Link>

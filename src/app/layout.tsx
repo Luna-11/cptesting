@@ -1,5 +1,8 @@
 // src/app/layout.tsx
+
 "use client";
+import { Analytics } from "@vercel/analytics/react"
+
 
 import { ReactNode, useState } from "react";
 import Sidebar from "./components/Sidebar";

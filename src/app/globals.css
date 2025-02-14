@@ -12,7 +12,8 @@ body {
 }
 
 /* Sidebar */
-.sidebar {
+.sidebar 
+{
   background-color: #ff9a9e;
   color: white;
 }

@@ -13,14 +13,14 @@ export default function Sidebar({ isSidebarOpen, setIsSidebarOpen }: SidebarProp
       {!isSidebarOpen ? (
         <button
           onClick={() => setIsSidebarOpen(true)}
-          className="text-white fixed top-4 left-4 z-50 transition-opacity duration-200"
+          className="text-white fixed top-2.5 left-4 z-50 transition-opacity duration-200"
         >
           <Menu size={24} />
         </button>
       ) : (
         <button
           onClick={() => setIsSidebarOpen(false)}
-          className="text-white fixed top-4 left-4 z-50 transition-opacity duration-200"
+          className="text-white fixed top-2.5 left-4 z-50 transition-opacity duration-200"
         >
           <X size={24} />
         </button>

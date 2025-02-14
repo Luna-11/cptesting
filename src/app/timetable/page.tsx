@@ -14,7 +14,8 @@ export default function Timetable() {
     }
   };
 
-  const times = Array.from({ length: 25 }, (_, i) => `${String(5 + i % 24).padStart(2, '0')}:00`);
+  // ✅ Generate exactly 24-hour times from 05:00 to 04:00
+  const times = Array.from({ length: 24 }, (_, i) => `${String((5 + i) % 24).padStart(2, '0')}:00`);
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
   return (

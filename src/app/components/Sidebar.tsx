@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { X, Menu } from "lucide-react"; // Import both icons
 
@@ -59,8 +60,8 @@ export default function Sidebar({ isSidebarOpen, setIsSidebarOpen }: SidebarProp
             </Link>
           </li>
           <li className="mb-4">
-            <Link href="/settings" className="text-white hover:text-gray-400">
-              Settings
+            <Link href="/profile" className="text-white hover:text-gray-400">
+              Profile
             </Link>
           </li>
         </ul>

@@ -16,7 +16,7 @@ export default function SubjectsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
+    <div className="min-h-screen p-6">
       <h1 className="text-2xl font-bold mb-4">Study Subjects</h1>
 
       {!selectedSubject ? (

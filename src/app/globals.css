@@ -6,7 +6,8 @@
 
 /* Global Background */
 body {
-  background: linear-gradient(to right, #ff9a9e, #fad0c4, #a1c4fd, #c2e9fb);
+  /* background: linear-gradient(to right, #ff9a9e, #fad0c4, #a1c4fd, #c2e9fb); */
+  background-color: #F5F5F5;
   font-family: "Arial", sans-serif;
   color: #333;
 }

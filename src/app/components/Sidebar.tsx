@@ -1,6 +1,11 @@
 
 import Link from "next/link";
 import { X, Menu } from "lucide-react"; // Import both icons
+import HomeIcon from "@mui/icons-material/Home";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import ListIcon from "@mui/icons-material/List";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import SettingsIcon from "@mui/icons-material/Settings";
 
 type SidebarProps = {
   isSidebarOpen: boolean;
@@ -29,14 +34,16 @@ export default function Sidebar({ isSidebarOpen, setIsSidebarOpen }: SidebarProp
 
       {/* Sidebar */}
       <div
-        className={`bg-gray-800 text-white w-64 p-4 fixed h-full top-0 left-0 transform transition-transform duration-300 ${
+        className={`bg-gray-800 text-white w-64 p-4 fixed h-full top-0 left-0 z-10 transform transition-transform duration-300 ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <ul className="mt-12">
           <li className="mb-4">
             <Link href="/" className="text-white hover:text-gray-400">
-              Dashboard
+            <span className="material-symbols-outlined">
+            Dashboard</span>
+             
             </Link>
           </li>
           <li className="mb-4">

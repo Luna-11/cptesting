@@ -6,8 +6,7 @@
 
 /* Global Background */
 body {
-  /* background: linear-gradient(to right, #ff9a9e, #fad0c4, #a1c4fd, #c2e9fb); */
-  background-color: #F5F5F5;
+  background-color: #f0eeee;
   font-family: "Arial", sans-serif;
   color: #333;
 }
@@ -15,31 +14,44 @@ body {
 /* Sidebar */
 .sidebar 
 {
-  background-color: #ff9a9e;
-  color: white;
+  background-color: #3d312e;
+  color: #f0eeee;
 }
 
 /* Navbar */
 .navbar {
-  background-color: #a1c4fd;
+  background-color: #3d312e;
   color: white;
 }
 
 /* Button Styles */
-button {
-  background: #ff9a9e;
-  color: white;
+.button {
+  background: #f0eeee;
+  color: black;
+  padding: 10px 15px;
+  border-radius: 5px;
+  border: none;
+  transition: background 0.3s ease;
+}
+.button2 {
+  background: #948585;
+  color: #f0eeee;
   padding: 10px 15px;
   border-radius: 5px;
   border: none;
   transition: background 0.3s ease;
 }
 
-button:hover {
-  background: #ff758c;
+.button:hover {
+  background: #948585;
+  color: #f0eeee;
 }
 
-/* Calendar Styling */
+.button2:hover {
+  background: #3d312e;
+  color: #f0eeee;
+}
+
 .calendar-container {
   background: white;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);

@@ -16,7 +16,7 @@ export default function SubjectsPage() {
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="flex flex-col items-center min-h-screen p-6">
       <h1 className="text-2xl font-bold mb-4">Study Subjects</h1>
 
       {!selectedSubject ? (
@@ -30,7 +30,7 @@ export default function SubjectsPage() {
               placeholder="Enter subject name"
               className="p-2 text-black rounded"
             />
-            <button onClick={addSubject} className="bg-blue-500 px-4 py-2 rounded">
+            <button onClick={addSubject} className="button2 px-4 py-2 rounded">
               Add
             </button>
           </div>

@@ -7,7 +7,7 @@ type NavbarProps = {
 
 export default function Navbar({ setIsSidebarOpen }: NavbarProps) {
   return (
-    <nav className="bg-blue-300 text-black py-4 text-center text-xl font-bold relative w-full">
+    <nav className="navbar text-black py-6 text-center text-xl font-bold relative w-full">
 
       <p>Study-With-Me</p>
       

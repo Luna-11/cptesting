@@ -28,13 +28,13 @@ export default function Timer({ subject, onStop }: TimerProps) {
       <div className="flex justify-center gap-4">
         <button
           onClick={() => setIsRunning(!isRunning)}
-          className="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600"
+          className="button px-4 py-2 rounded"
         >
           {isRunning ? "Pause" : "Resume"}
         </button>
         <button
           onClick={onStop}
-          className="px-4 py-2 rounded bg-red-500 hover:bg-red-600"
+          className="button px-4 py-2 rounded"
         >
           Stop & Back
         </button>

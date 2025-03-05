@@ -1,5 +1,3 @@
-// src/app/layout.tsx
-
 "use client";
 import { Analytics } from "@vercel/analytics/react"
 

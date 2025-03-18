@@ -70,6 +70,10 @@ export default function Sidebar({ isSidebarOpen, setIsSidebarOpen }: SidebarProp
           </li>
           <li className="mb-10">
             <AccountCircleIcon className="mr-4 text-white"/>
+            <Link href="/userReport" className="text-white hover:text-gray-400">User Report</Link>
+          </li>
+          <li className="mb-10">
+            <AccountCircleIcon className="mr-4 text-white"/>
             <Link href="/profile" className="text-white hover:text-gray-400">Profile</Link>
           </li>
 

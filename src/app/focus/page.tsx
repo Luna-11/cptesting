@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
+
 export default function BackgroundVideoTimer() {
   const [time, setTime] = useState(1500); // 25 minutes in seconds
   const [isRunning, setIsRunning] = useState(false);

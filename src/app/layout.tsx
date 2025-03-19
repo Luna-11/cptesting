@@ -1,11 +1,11 @@
 "use client";
-import { Analytics } from "@vercel/analytics/react"
-
-
+import { Work_Sans } from "next/font/google";
 import { ReactNode, useState } from "react";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import "./globals.css"; // Import the global styles here
+
+const workSans = Work_Sans({ subsets: ["latin"], weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"] });
 
 export default function Layout({ children }: { children: ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

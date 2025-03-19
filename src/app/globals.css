@@ -5,9 +5,11 @@
 /* styles/globals.css */
 
 /* Global Background */
+html {
+  font-family: "Work Sans", sans-serif;
+}
 body {
   background-color: #f0eeee;
-  font-family: "Arial", sans-serif;
   color: #333;
 }
 

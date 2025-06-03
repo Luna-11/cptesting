@@ -13,12 +13,12 @@ export default function Navbar({ setIsSidebarOpen }: NavbarProps) {
         {/* Left Side */}
         <div className="navbar text-xl flex-1 text-center">
           <p>Study-With-Me</p>
-        </div>
+        </div>  
 
         {/* Right Side */}
         <div className="navbar flex space-x-6 mr-8">
-          <p>Sign In</p>
-          <p>About Us</p> 
+        <p>Sign In</p><link rel="stylesheet" href="/" />
+        <p>About Us</p> 
         </div>
       </div>
     </nav>

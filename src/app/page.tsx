@@ -4,7 +4,7 @@ export default function HomePage() {
 
 
 
-  <script type="module" src=""></script><div className="flex justify-center">
+  <script type="module" src="/"></script><div className="flex justify-center">
   {/* Main Content */}
   <main className="flex-1 flex items-center justify-center p-8">
     <div className="grid grid-cols-2 gap-8 items-center max-w-6xl">

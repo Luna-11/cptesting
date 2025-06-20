@@ -1,37 +1,69 @@
 "use client";
 import { useState } from 'react';
-import { FaFacebookF, FaTwitter, FaLinkedinIn } from 'react-icons/fa';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function Login() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const router = useRouter(); // for redirect
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  });
 
-  const handleSubmit = (e: { preventDefault: () => void; }) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Logging in:', username, password);
-    // Do login logic here
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        // Redirect based on role
+        if (data.role === 'admin') {
+          router.push('/admin/dashboard');
+        } else if (data.role === 'user') {
+          router.push('/profile'); // change to /user/dashboard if that's your user page
+        } else {
+          alert('Unknown role. Please contact support.');
+        }
+      } else {
+        alert(data.message || 'Login failed.');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Something went wrong. Please try again later.');
+    }
   };
 
   return (
     <div className="flex min-h-screen font-sans bg-[#3d312e]">
       {/* Left Panel - Branding */}
       <div className="w-1/2 flex flex-col justify-center items-center p-16 bg-[#f0eeee]">
-        <img 
-          src="/transparentLogo.png" 
-          alt="Nike Logo" 
-          className="w-20 mb-8" 
-        />
-        <h1 className="text-3xl font-bold mb-6 text-[#3d312e]">Welcome to The Nike User Area</h1>
-        <p className="text-[#948585] mb-6">To request an account, just call us</p>
-        <div className="text-lg mb-6">
-          <p className="font-bold mb-2 text-[#3d312e]">+245 04 166 0355</p>
-          <p className="font-bold text-[#948585]">+347 42 390 2456</p>
+        <div className="flex items-center mb-8">
+          <Image 
+            src="/transparentLogo.png"
+            alt="StudyFlow Logo"
+            width={300}
+            height={90}
+            className="object-contain"
+          />
         </div>
-        <div className="flex space-x-4 text-[#948585]">
-          <FaFacebookF />
-          <FaTwitter />
-          <FaLinkedinIn />
-        </div>
+        <h1 className="text-3xl font-bold mb-6 text-[#3d312e]">Welcome to Your Study Hub</h1>
+        <p className="text-[#948585] mb-6">Optimize your learning routine with us</p>
       </div>
 
       {/* Right Panel - Form */}
@@ -43,30 +75,37 @@ export default function Login() {
               Please enter your credentials. <br />
               Won't be shared publicly.
             </p>
+            
             <input
               type="text"
-              placeholder="User name"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              name="username"
+              placeholder="Username"
+              value={formData.username}
+              onChange={handleChange}
               className="w-full p-3 mb-4 bg-white border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-[#3d312e] placeholder-gray-400 text-gray-700"
               required
             />
+            
             <input
               type="password"
+              name="password"
               placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={formData.password}
+              onChange={handleChange}
               className="w-full p-3 mb-6 bg-white border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-[#3d312e] placeholder-gray-400 text-gray-700"
               required
             />
+            
             <button
               type="submit"
               className="w-full bg-[#3d312e] text-white py-3 rounded hover:bg-[#4a3c38] transition font-medium"
             >
               Log in
             </button>
+            
             <p className="text-center mt-6 text-gray-600">
-              <a href="/" className="text-[#3d312e] hover:underline">Back to home page</a>
+              Don't have an account?{' '}
+              <a href="/register" className="text-[#3d312e] hover:underline">Register</a>
             </p>
           </form>
         </div>

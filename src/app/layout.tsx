@@ -13,7 +13,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   
   // Routes where we don't want sidebar and navbar
-  const authRoutes = ['/register', '/login'];
+  const authRoutes = ['/register', '/logIn', '/admin'];
   const isAuthRoute = authRoutes.includes(pathname);
 
   return (

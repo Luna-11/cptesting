@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import mysql from 'mysql2/promise';
 import bcrypt from 'bcryptjs';
 
+// Types
 type RegistrationData = {
   email: string;
   username: string;
@@ -16,15 +17,42 @@ type ErrorResponse = {
   details?: unknown;
 };
 
+type SuccessResponse = {
+  success: true;
+  userId: number;
+};
+
+// POST Route
 export async function POST(request: Request) {
-  // 1. Parse and validate input
   const parseResult = await safeParseRequest(request);
   if (!parseResult.success) {
     return NextResponse.json(parseResult, { status: 400 });
   }
+
   const { email, username, password, studyLevel, dailyStudyGoal } = parseResult.data;
 
-  // 2. Process registration
+  // Additional validation
+  if (!validateEmail(email)) {
+    return NextResponse.json(
+      { success: false, error: "Invalid email format" },
+      { status: 400 }
+    );
+  }
+
+  if (password.length < 8) {
+    return NextResponse.json(
+      { success: false, error: "Password must be at least 8 characters" },
+      { status: 400 }
+    );
+  }
+
+  if (dailyStudyGoal && (isNaN(dailyStudyGoal) || dailyStudyGoal <= 0)) {
+    return NextResponse.json(
+      { success: false, error: "Daily study goal must be a positive number" },
+      { status: 400 }
+    );
+  }
+
   const registrationResult = await registerUser({
     email,
     username,
@@ -38,13 +66,19 @@ export async function POST(request: Request) {
     : NextResponse.json(registrationResult, { status: 500 });
 }
 
-// Helper functions
+// Helper: Email validation
+function validateEmail(email: string): boolean {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
+// Helper: safely parse and validate request body
 async function safeParseRequest(request: Request): Promise<
   { success: true; data: RegistrationData } | ErrorResponse
 > {
   try {
     const data = await request.json();
-    
+
     if (!data.email?.trim()) return { success: false, error: "Email is required" };
     if (!data.username?.trim()) return { success: false, error: "Username is required" };
     if (!data.password) return { success: false, error: "Password is required" };
@@ -56,7 +90,7 @@ async function safeParseRequest(request: Request): Promise<
         username: data.username.trim(),
         password: data.password,
         studyLevel: data.studyLevel?.trim(),
-        dailyStudyGoal: Number(data.dailyStudyGoal) || undefined
+        dailyStudyGoal: data.dailyStudyGoal !== undefined ? Number(data.dailyStudyGoal) : undefined
       }
     };
   } catch {
@@ -64,48 +98,37 @@ async function safeParseRequest(request: Request): Promise<
   }
 }
 
-async function registerUser(data: RegistrationData): Promise<
-  { success: true; userId: number } | ErrorResponse
-> {
+// Helper: perform registration and database insertion
+async function registerUser(data: RegistrationData): Promise<SuccessResponse | ErrorResponse> {
   let connection;
   try {
-    // 1. Hash password
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    // 2. Connect to database
     connection = await mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'studywithme'
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'studywithme'
     });
 
-    // 3. Execute query
     const [result] = await connection.execute(
-      `INSERT INTO user 
-       (name, email, password, goal, studyLevel) 
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO user (name, email, password, goal, studyLevel, role_id) VALUES (?, ?, ?, ?, ?, ?)`,
       [
         data.username,
         data.email,
         hashedPassword,
-        data.dailyStudyGoal ?? null,
-        data.studyLevel ?? null
+        data.dailyStudyGoal || null, // Handle undefined goal
+        data.studyLevel || null,     // Handle undefined studyLevel
+        2                            // Default role_id
       ]
     );
 
-    // Type assertion for mysql2 result
     const insertResult = result as mysql.ResultSetHeader;
     return { success: true, userId: insertResult.insertId };
 
   } catch (err: unknown) {
-    // Log full error for debugging
-    console.error('Registration failed:', {
-      timestamp: new Date(),
-      error: err
-    });
+    console.error('Registration failed:', err);
 
-    // User-friendly error messages
     if (isMySQLDuplicateError(err)) {
       return { success: false, error: "Email already registered" };
     }
@@ -114,26 +137,38 @@ async function registerUser(data: RegistrationData): Promise<
       return { success: false, error: "Database connection failed" };
     }
 
-    return { 
-      success: false, 
+    if (isMySQLMissingColumnError(err)) {
+      return { success: false, error: "Database configuration error" };
+    }
+
+    return {
+      success: false,
       error: "Registration failed",
-      ...(process.env.NODE_ENV === 'development' && {
-        details: err instanceof Error ? err : undefined
-      })
+      ...(process.env.NODE_ENV === 'development' && { details: err })
     };
   } finally {
     if (connection) await connection.end();
   }
 }
 
-// Type guards for specific errors
+// Error type guards
 function isMySQLDuplicateError(err: unknown): boolean {
-  return err instanceof Error && 
-    'code' in err && 
-    err.code === 'ER_DUP_ENTRY';
+  return typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as any).code === 'ER_DUP_ENTRY';
 }
 
 function isDatabaseConnectionError(err: unknown): boolean {
-  return err instanceof Error && 
-    ('code' in err && ['ECONNREFUSED', 'ER_ACCESS_DENIED_ERROR'].includes(err.code as string));
+  return typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    ['ECONNREFUSED', 'ER_ACCESS_DENIED_ERROR'].includes((err as any).code);
+}
+
+function isMySQLMissingColumnError(err: unknown): boolean {
+  return typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as any).code === 'ER_BAD_FIELD_ERROR';
 }

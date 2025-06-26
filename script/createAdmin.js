@@ -2,46 +2,51 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
 
 (async () => {
+  // Database connection - UPDATE THESE VALUES!
   const connection = await mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'password',
-    database: 'your_database'
+    host: 'localhost',      // Your MySQL host
+    user: 'root',           // Your MySQL username
+    password: '',   // Your MySQL password
+    database: 'studywithme' // Your database name
   });
 
-  const adminUsername = 'admin';
-  const adminPassword = 'admin123';
+  // Admin configuration
+  const adminPassword = '12345'; // Default admin password
+  const adminRoleId = 1;         // Role ID for admin (different from default 2)
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
   try {
-    // Check if admin exists in users table
-    const [users] = await connection.execute(
-      'SELECT * FROM users WHERE username = ?',
-      [adminUsername]
+    // Check for existing admins
+    const [existingAdmins] = await connection.execute(
+      'SELECT name FROM user WHERE name LIKE "admin%" AND role_id = ? ORDER BY name DESC LIMIT 1',
+      [adminRoleId]
     );
 
-    if (users.length === 0) {
-      // Create user
-      const [userResult] = await connection.execute(
-        'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-        [adminUsername, hashedPassword, 'admin']
-      );
-
-      const userId = userResult.insertId;
-
-      // Insert into admin sub table
-      await connection.execute(
-        'INSERT INTO admin (user_id, created_by_system) VALUES (?, ?)',
-        [userId, 1]
-      );
-
-      console.log('Admin account and admin subtable entry created.');
-    } else {
-      console.log('Admin account already exists.');
+    // Generate next admin number
+    let nextAdminNumber = 1;
+    if (existingAdmins.length > 0) {
+      const lastAdmin = existingAdmins[0].name;
+      nextAdminNumber = parseInt(lastAdmin.replace('admin', '')) + 1;
     }
+    
+    const adminName = `admin${nextAdminNumber}`;
+    const adminEmail = `${adminName}@admin.com`;
+
+    // Create admin user
+    const [userResult] = await connection.execute(
+      'INSERT INTO user (name, email, password, role_id) VALUES (?, ?, ?, ?)',
+      [adminName, adminEmail, hashedPassword, adminRoleId]
+    );
+
+    console.log(`✅ Admin created successfully:
+      User ID: ${userResult.insertId}
+      Username: ${adminName}
+      Email: ${adminEmail}
+      Password: ${adminPassword}
+      Role ID: ${adminRoleId}`);
 
   } catch (error) {
-    console.error('Error creating admin:', error);
+    console.error('❌ Error creating admin:', error.message);
   } finally {
     await connection.end();
   }

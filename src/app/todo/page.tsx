@@ -21,7 +21,7 @@ export default function TodoList() {
   return (
     <div className="flex flex-col items-center p-6 max-w-md mx-auto">
       <h1 className="text-2xl font-bold mb-4">To-Do List</h1>
-      <div className="flex w-full mb-4">
+      <div className="flex w-full mb-n4">
         <input
           type="text"
           value={input}

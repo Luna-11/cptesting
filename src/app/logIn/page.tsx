@@ -34,9 +34,9 @@ export default function Login() {
       if (res.ok && data.success) {
         // Redirect based on role
         if (data.role === 'admin') {
-          router.push('/admin/dashboard');
+          router.push('/admin');
         } else if (data.role === 'user') {
-          router.push('/profile'); // change to /user/dashboard if that's your user page
+          router.push('/'); // change to /user/dashboard if that's your user page
         } else {
           alert('Unknown role. Please contact support.');
         }

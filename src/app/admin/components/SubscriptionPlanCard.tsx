@@ -1,7 +1,7 @@
 // src/app/admin/components/SubscriptionPlanCard.tsx
 "use client";
 
-type PlanName = "Enterprise" | "Professional" | "Basic";
+type PlanName = "Pro";
 
 interface PlanColors {
   bg: string;
@@ -18,17 +18,7 @@ interface Plan {
 }
 
 const planColors: Record<PlanName, PlanColors> = {
-  Enterprise: {
-    bg: "bg-purple-100",
-    text: "text-purple-800",
-    border: "border-purple-300",
-  },
-  Professional: {
-    bg: "bg-blue-100",
-    text: "text-blue-800",
-    border: "border-blue-300",
-  },
-  Basic: {
+  Pro: {
     bg: "bg-green-100",
     text: "text-green-800",
     border: "border-green-300",

@@ -1,10 +1,4 @@
-export default function LoginLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    // This empty layout will prevent the root layout from being applied
-    <>{children}</>
-  )
+// app/register/layout.tsx
+export default function RegisterLayout({ children }: { children: React.ReactNode }) {
+  return children;
 }

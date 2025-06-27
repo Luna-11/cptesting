@@ -1,10 +1,8 @@
 "use client";
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 export default function Login() {
-  const router = useRouter(); // for redirect
   const [formData, setFormData] = useState({
     username: '',
     password: ''
@@ -32,14 +30,8 @@ export default function Login() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        // Redirect based on role
-        if (data.role === 'admin') {
-          router.push('/admin');
-        } else if (data.role === 'user') {
-          router.push('/'); // change to /user/dashboard if that's your user page
-        } else {
-          alert('Unknown role. Please contact support.');
-        }
+        alert(`Logged in as ${data.role}`);
+        // Here you could optionally set a token/localStorage/cookie if you want
       } else {
         alert(data.message || 'Login failed.');
       }
@@ -50,9 +42,9 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen font-sans bg-[#3d312e]">
+    <div className="w-screen min-h-screen flex flex-col md:flex-row font-sans bg-[#3d312e] overflow-x-hidden">
       {/* Left Panel - Branding */}
-      <div className="w-1/2 flex flex-col justify-center items-center p-16 bg-[#f0eeee]">
+      <div className="w-full md:w-1/2 flex flex-col justify-center items-center p-10 md:p-16 bg-[#f0eeee]">
         <div className="flex items-center mb-8">
           <Image 
             src="/transparentLogo.png"
@@ -62,20 +54,20 @@ export default function Login() {
             className="object-contain"
           />
         </div>
-        <h1 className="text-3xl font-bold mb-6 text-[#3d312e]">Welcome to Your Study Hub</h1>
-        <p className="text-[#948585] mb-6">Optimize your learning routine with us</p>
+        <h1 className="text-3xl md:text-4xl font-bold mb-6 text-[#3d312e] text-center">Welcome to Your Study Hub</h1>
+        <p className="text-[#948585] mb-6 text-center">Optimize your learning routine with us</p>
       </div>
 
       {/* Right Panel - Form */}
-      <div className="w-1/2 flex justify-center items-center p-12 bg-[#3d312e]">
-        <div className="bg-white rounded-xl shadow-lg p-10 w-full max-w-md">
+      <div className="w-full md:w-1/2 flex justify-center items-center p-8 md:p-12 bg-[#3d312e]">
+        <div className="bg-white rounded-xl shadow-lg p-8 md:p-10 w-full max-w-md">
           <form onSubmit={handleSubmit}>
-            <h2 className="text-3xl font-bold mb-6 text-[#3d312e]">Log in</h2>
-            <p className="mb-6 text-sm text-[#948585]">
+            <h2 className="text-3xl font-bold mb-6 text-[#3d312e] text-center">Log in</h2>
+            <p className="mb-6 text-sm text-[#948585] text-center">
               Please enter your credentials. <br />
               Won't be shared publicly.
             </p>
-            
+
             <input
               type="text"
               name="username"
@@ -85,7 +77,7 @@ export default function Login() {
               className="w-full p-3 mb-4 bg-white border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-[#3d312e] placeholder-gray-400 text-gray-700"
               required
             />
-            
+
             <input
               type="password"
               name="password"
@@ -95,15 +87,15 @@ export default function Login() {
               className="w-full p-3 mb-6 bg-white border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-[#3d312e] placeholder-gray-400 text-gray-700"
               required
             />
-            
+
             <button
               type="submit"
               className="w-full bg-[#3d312e] text-white py-3 rounded hover:bg-[#4a3c38] transition font-medium"
             >
               Log in
             </button>
-            
-            <p className="text-center mt-6 text-gray-600">
+
+            <p className="text-center mt-6 text-gray-600 text-sm">
               Don't have an account?{' '}
               <a href="/register" className="text-[#3d312e] hover:underline">Register</a>
             </p>

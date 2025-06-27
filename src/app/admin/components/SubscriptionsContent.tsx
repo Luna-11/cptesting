@@ -5,7 +5,7 @@ import SubscriptionPlanCard from "./SubscriptionPlanCard";
 
 type SubscriptionPlan = {
   id: string;
-  name: "Enterprise" | "Professional" | "Basic"; // Must match PlanName
+  name: "Pro";
   price: string;
   features: string[];
   recommended?: boolean;
@@ -15,23 +15,10 @@ export default function SubscriptionContent() {
   const subscriptionPlans: SubscriptionPlan[] = [
     {
       id: "1",
-      name: "Basic",
+      name: "Pro",
       price: "$9.99/mo",
       features: ["Feature 1", "Feature 2"],
-    },
-    {
-      id: "2",
-      name: "Professional",
-      price: "$19.99/mo",
-      features: ["Feature 1", "Feature 2", "Feature 3"],
-      recommended: true,
-    },
-    {
-      id: "3",
-      name: "Enterprise",
-      price: "$49.99/mo",
-      features: ["All Features", "Priority Support"],
-    },
+    }
   ];
 
   return (

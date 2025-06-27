@@ -22,7 +22,7 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
       alert("Passwords don't match!");
       return;
@@ -31,9 +31,7 @@ export default function Register() {
     try {
       const response = await fetch('/api/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: formData.email,
           username: formData.username,
@@ -65,26 +63,28 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen font-sans bg-[#3d312e]">
+    <div className="w-screen min-h-screen flex flex-col md:flex-row font-sans bg-[#3d312e] overflow-x-hidden">
       {/* Left Panel */}
-      <div className="w-1/2 flex flex-col justify-center items-center p-16 bg-[#f0eeee]">
-        <Image 
+      <div className="w-full md:w-1/2 flex flex-col justify-center items-center p-10 md:p-16 bg-[#f0eeee]">
+        <Image
           src="/transparentLogo.png"
           alt="StudyFlow Logo"
           width={300}
           height={90}
           className="object-contain"
         />
-        <h1 className="text-3xl font-bold mb-6 text-[#3d312e]">Welcome to Your Study Hub</h1>
-        <p className="text-[#948585] mb-6">Optimize your learning routine with us</p>
+        <h1 className="text-3xl md:text-4xl font-bold mb-4 md:mb-6 text-[#3d312e] text-center">
+          Welcome to Your Study Hub
+        </h1>
+        <p className="text-[#948585] mb-4 md:mb-6 text-center">Optimize your learning routine with us</p>
       </div>
 
       {/* Right Panel - Form */}
-      <div className="w-1/2 flex justify-center items-center p-12 bg-[#3d312e]">
-        <div className="bg-white rounded-xl shadow-lg p-10 w-full max-w-md">
+      <div className="w-full md:w-1/2 flex justify-center items-center p-8 md:p-12 bg-[#3d312e]">
+        <div className="bg-white rounded-xl shadow-lg p-8 md:p-10 w-full max-w-md">
           <form onSubmit={handleSubmit}>
-            <h2 className="text-3xl font-bold mb-6 text-[#3d312e]">Register</h2>
-            
+            <h2 className="text-3xl font-bold mb-6 text-[#3d312e] text-center">Register</h2>
+
             <input
               type="email"
               name="email"
@@ -130,7 +130,7 @@ export default function Register() {
               value={formData.studyLevel}
               onChange={handleChange}
               required
-              className="w-full p-3 mb-4 border rounded"
+              className="w-full p-3 mb-4 border rounded bg-white"
             >
               <option value="">Select Study Level</option>
               <option value="high_school">High School</option>
@@ -143,7 +143,7 @@ export default function Register() {
               value={formData.dailyStudyGoal}
               onChange={handleChange}
               required
-              className="w-full p-3 mb-6 border rounded"
+              className="w-full p-3 mb-6 border rounded bg-white"
             >
               <option value="">Select Daily Study Goal</option>
               <option value="1">1 hour</option>
@@ -159,8 +159,11 @@ export default function Register() {
               Register
             </button>
 
-            <p className="text-center mt-6 text-gray-600">
-              Already have an account? <a href="/logIn" className="text-[#3d312e] hover:underline">Log In</a>
+            <p className="text-center mt-6 text-gray-600 text-sm">
+              Already have an account?{' '}
+              <a href="/logIn" className="text-[#3d312e] hover:underline">
+                Log In
+              </a>
             </p>
           </form>
         </div>

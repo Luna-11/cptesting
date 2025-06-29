@@ -1,12 +1,16 @@
 "use client";
+
 import { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 export default function Login() {
   const [formData, setFormData] = useState({
     username: '',
     password: ''
   });
+
+  const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -31,7 +35,12 @@ export default function Login() {
 
       if (res.ok && data.success) {
         alert(`Logged in as ${data.role}`);
-        // Here you could optionally set a token/localStorage/cookie if you want
+
+        // ✅ Set cookie for middleware to detect
+        document.cookie = "loggedIn=true; path=/";
+
+        // ✅ Redirect to home page
+        router.push('/');
       } else {
         alert(data.message || 'Login failed.');
       }

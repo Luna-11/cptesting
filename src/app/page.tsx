@@ -1,8 +1,7 @@
+
 export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
-
-
 
   <script type="module" src="/"></script><div className="flex justify-center">
   {/* Main Content */}

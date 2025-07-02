@@ -16,29 +16,30 @@ export default function AboutUsPage() {
           <div className="slide-content">
             <h1>HOW TO USE</h1>
             <h2>STUDY-WITH-ME</h2>
-            <p className="slide-description">Interactive guide to boost your productivity</p>
-            <button className="cta-button">GET STARTED</button>
+            <p className="slide-description">This website is developed in order to help students to manage their time effectively and efficiently.</p>
+            <p>Let's start to learn how to use this.</p>
           </div>
         </section>
 
         {/* Slide 2: Getting Started */}
         <section className="slide bg-space-dark-1">
           <div className="slide-content">
-            <div className="planet-tag">PLANET</div>
-            <h1>GETTING STARTED</h1>
+            <h1>How to use Calendar Page</h1>
             
             <div className="content-grid">
               <div className="text-content">
-                <p>Begin your productive study journey in just a few steps:</p>
+                <p>The calendare page is mainly for the events arrangement. </p>
                 <ol className="steps-list">
-                  <li>Create your free account</li>
-                  <li>Set up your study profile</li>
-                  <li>Choose your study room</li>
-                  <li>Start your focused session</li>
+                  <li>The hamster on the calendar is to show the current date.</li>
+                  <li>Click on the date you would like to set an event.</li>
+                  <li>You can add the name of the event.</li>
+                  <li>You can also choose what color you would like to see on your calendar.</li>
+                  <li>You can always update the event by clicking on the event.</li>
                 </ol>
-                <button className="cta-button">LAUNCH NOW</button>
+                <button className="cta-button">Go to Calendar</button>
               </div>
-              <div className="planet-image" style={{ backgroundImage: 'url(/earth.png)' }}></div>
+              <div className="planet-image"><img src="/rabit.png" alt="test image" /> </div>
+
             </div>
           </div>
         </section>
@@ -46,11 +47,10 @@ export default function AboutUsPage() {
         {/* Slide 3: Key Features */}
         <section className="slide bg-space-dark-2">
           <div className="slide-content">
-            <div className="planet-tag">PLANET</div>
-            <h1>KEY FEATURES</h1>
+            <h1>Study Session</h1>
             
             <div className="content-grid">
-              <div className="planet-image" style={{ backgroundImage: 'url(/mars.png)' }}></div>
+              <div className="planet-image" style={{ backgroundImage: 'url(../mars.png)' }}></div>
               <div className="text-content">
                 <ul className="features-list">
                   <li>Pomodoro Timer with customizable intervals</li>
@@ -68,8 +68,7 @@ export default function AboutUsPage() {
         {/* Slide 4: Study Rooms */}
         <section className="slide bg-space-dark-3">
           <div className="slide-content">
-            <div className="planet-tag">PLANET</div>
-            <h1>STUDY ROOMS</h1>
+            <h1>Timetable</h1>
             
             <div className="content-grid">
               <div className="text-content">
@@ -84,6 +83,49 @@ export default function AboutUsPage() {
                 <button className="cta-button">JOIN ROOM</button>
               </div>
               <div className="planet-image" style={{ backgroundImage: 'url(/saturn.png)' }}></div>
+            </div>
+          </div>
+        </section>
+
+        {/* Slide 5: Getting Started */}
+        <section className="slide bg-space-dark-1">
+          <div className="slide-content">
+            <h1>How to use To-Do-List</h1>
+            
+            <div className="content-grid">
+              <div className="text-content">
+                <p>The calendare page is mainly for the events arrangement. </p>
+                <ol className="steps-list">
+                  <li>The hamster on the calendar is to show the current date.</li>
+                  <li>Click on the date you would like to set an event.</li>
+                  <li>You can add the name of the event.</li>
+                  <li>You can also choose what color you would like to see on your calendar.</li>
+                  <li>You can always update the event by clicking on the event.</li>
+                </ol>
+                <button className="cta-button">Go to Calendar</button>
+              </div>
+              <div className="planet-image"><img src="/rabit.png" alt="test image" /> </div>
+
+            </div>
+          </div>
+        </section>
+        {/* Slide 6: Key Features */}
+        <section className="slide bg-space-dark-2">
+          <div className="slide-content">
+            <h1>User Reports</h1>
+            
+            <div className="content-grid">
+              <div className="planet-image" style={{ backgroundImage: 'url(../mars.png)' }}></div>
+              <div className="text-content">
+                <ul className="features-list">
+                  <li>Pomodoro Timer with customizable intervals</li>
+                  <li>Study Room Creator for group sessions</li>
+                  <li>Progress Tracking dashboard</li>
+                  <li>Resource Sharing platform</li>
+                  <li>Focus analytics and reports</li>
+                </ul>
+                <button className="cta-button">EXPLORE FEATURES</button>
+              </div>
             </div>
           </div>
         </section>

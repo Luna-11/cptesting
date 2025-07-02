@@ -247,11 +247,6 @@ body {
   background-position: center;
 }
 
-/* globals.css */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* Slide Container Styles */
 .slides-container {
   scroll-snap-type: y mandatory;
@@ -322,16 +317,6 @@ body {
   margin-bottom: 3rem;
 }
 
-.planet-tag {
-  position: absolute;
-  top: 20%;
-  left: 0;
-  transform: rotate(-90deg) translateX(-50%);
-  transform-origin: left center;
-  font-size: 1rem;
-  letter-spacing: 0.2rem;
-  opacity: 0.7;
-}
 
 /* Grid Layout */
 .content-grid {
@@ -345,14 +330,6 @@ body {
   max-width: 500px;
 }
 
-.planet-image {
-  height: 400px;
-  width: 400px;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  margin: 0 auto;
-}
 
 /* Buttons */
 .cta-button {
@@ -419,6 +396,7 @@ body {
 
 .bg-space-dark-1 {
   background-color: #f0eeee;
+  color: black;
 }
 
 .bg-space-dark-2 {

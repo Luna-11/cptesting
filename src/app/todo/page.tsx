@@ -80,11 +80,11 @@
                   {/* Step 1 */}
                   <div className="flex flex-col items-center">
                     <div
-                      className={`w-7 h-7 flex items-center justify-center rounded-full text-white text-xs font-bold ${
+                      className={`w-[60px] h-[60px] flex items-center justify-center rounded-full text-white text-xs font-bold ${
                         currentStep === 1 ? "bg-pink-600" : "bg-gray-400"
                       }`}
                     >
-                      1
+                       <img src="/cat4.png" alt="step icon" className="w-500 h-700" />
                     </div>
                     <span className="text-[10px] mt-1">To start</span>
                   </div>
@@ -98,11 +98,11 @@
                   {/* Step 2 */}
                   <div className="flex flex-col items-center">
                     <div
-                      className={`w-7 h-7 flex items-center justify-center rounded-full text-white text-xs font-bold ${
+                      className={`w-[60px] h-[60px] flex items-center justify-center rounded-full text-white text-xs font-bold ${
                         currentStep === 2 ? "bg-pink-600" : "bg-gray-400"
                       }`}
                     >
-                      2
+                       <img src="/cat2.png" alt="step icon" className="w-500 h-700" />
                     </div>
                     <span className="text-[10px] mt-1">In Progress</span>
                   </div>
@@ -115,12 +115,12 @@
 
                   {/* Step 3 */}
                   <div className="flex flex-col items-center">
-                    <div
-                      className={`w-7 h-7 flex items-center justify-center rounded-full text-white text-xs font-bold ${
+                   <div
+                      className={`w-[60px] h-[60px] flex items-center justify-center rounded-full text-white text-xs font-bold ${
                         currentStep === 3 ? "bg-pink-600" : "bg-gray-400"
                       }`}
                     >
-                      3
+                       <img src="/cat5.png" alt="step icon" className="w-500 h-700" />
                     </div>
                     <span className="text-[10px] mt-1">Done</span>
                   </div>

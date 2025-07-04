@@ -29,14 +29,12 @@ const colorOptions = [
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-// Memoized DayHeader component
 const DayHeader = memo(({ day }: { day: string }) => (
-  <div className="flex-1 min-w-[120px] p-2 font-bold text-center">
-    {day}
+  <div className="flex-1 min-w-[120px] p-2 font-bold text-center border">
+    {day.substring(0, 3).toUpperCase()}
   </div>
 ));
 
-// Memoized TimeSlot component
 const TimeSlot = memo(({ 
   time, 
   day, 
@@ -51,12 +49,12 @@ const TimeSlot = memo(({
   removeEvent: (time: string, day: string) => void; 
 }) => (
   <div
-    className="flex-1 min-w-[120px] p-2 border-l hover:bg-gray-50 cursor-pointer"
+    className="flex-1 min-w-[120px] p-2 border hover:bg-gray-50 cursor-pointer h-16"
     onClick={() => handleSlotClick(time, day)}
   >
     {event && (
       <div 
-        className="flex justify-between items-center p-1 rounded"
+        className="flex justify-between items-center p-1 rounded h-full"
         style={{ 
           backgroundColor: `${event.color}20`,
           borderLeft: `4px solid ${event.color}`
@@ -89,29 +87,28 @@ export default function Timetable() {
     isEditing: false
   });
 
-  // Generate time slots from 5:00 AM to 4:45 AM (next day)
   const times = useMemo(() => {
     const slots = [];
     let totalMinutes = 5 * 60; // 5:00 AM start
-    const endMinutes = (24 + 5) * 60; // 5:00 AM next day (1740 minutes)
+    const endMinutes = 29 * 60; // 5:00 AM next day (24 hours later)
 
     while (totalMinutes < endMinutes) {
       const hour = Math.floor(totalMinutes / 60) % 24;
       const minute = totalMinutes % 60;
-      slots.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+      const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      slots.push(timeStr);
       totalMinutes += timeInterval;
     }
+    
     return slots;
   }, [timeInterval]);
 
-  // Event lookup map
   const eventMap = useMemo(() => {
     const map = new Map<string, EventData>();
     schedule.forEach(event => map.set(`${event.day}-${event.time}`, event));
     return map;
   }, [schedule]);
 
-  // Event handlers
   const handleSlotClick = useCallback((time: string, day: string) => {
     const event = eventMap.get(`${day}-${time}`);
     setModalState({
@@ -143,12 +140,12 @@ export default function Timetable() {
     setSchedule(prevSchedule => prevSchedule.filter(e => !(e.time === time && e.day === day)));
   }, []);
 
-  // Row component
   const Row = memo(({ index, style }: { index: number; style: React.CSSProperties }) => {
     const time = times[index];
+    
     return (
       <div style={style} className="flex border-b">
-        <div className="w-24 p-2 font-bold bg-gray-50 flex-shrink-0">{time}</div>
+        <div className="w-24 p-2 font-bold bg-gray-50 flex-shrink-0 border-r">{time}</div>
         {days.map(day => {
           const event = eventMap.get(`${day}-${time}`);
           return (
@@ -168,7 +165,6 @@ export default function Timetable() {
 
   return (
     <div className="flex flex-col items-center p-4 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Weekly Timetable</h1>
 
       <div className="flex flex-wrap gap-4 mb-4 p-4 bg-gray-50 rounded-lg w-full justify-center">
         <div className="flex items-center gap-2">
@@ -186,19 +182,19 @@ export default function Timetable() {
       </div>
 
       <div className="w-full overflow-hidden border rounded-lg">
-        <div className="flex bg-gray-100">
-          <div className="w-24 p-2 font-bold flex-shrink-0">Time</div>
+        <div className="flex bg-gray-100 border-b">
+          <div className="w-24 p-2 font-bold flex-shrink-0 border-r">TIME</div>
           {days.map(day => (
             <DayHeader key={day} day={day} />
           ))}
         </div>
 
         <List
-          height={600}
+          height={800}
           itemCount={times.length}
           itemSize={60}
           width="100%"
-          key={timeInterval} // Re-render when interval changes
+          key={timeInterval}
         >
           {Row}
         </List>
@@ -216,7 +212,6 @@ export default function Timetable() {
   );
 }
 
-// Modal component
 const Modal = memo(({
   modalState,
   setModalState,

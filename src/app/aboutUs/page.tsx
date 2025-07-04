@@ -38,7 +38,7 @@ export default function AboutUsPage() {
                 </ol>
                 <button className="cta-button">Go to Calendar</button>
               </div>
-              <div className="planet-image"><img src="/rabit.png" alt="test image" /> </div>
+              <div className="planet-image"><img src="/cat5.png" alt="test image" /> </div>
 
             </div>
           </div>
@@ -50,7 +50,7 @@ export default function AboutUsPage() {
             <h1>Study Session</h1>
             
             <div className="content-grid">
-              <div className="planet-image" style={{ backgroundImage: 'url(../mars.png)' }}></div>
+              <div className="planet-image"><img src="/cat4.png" alt="test image" /> </div>
               <div className="text-content">
                 <ul className="features-list">
                   <li>Pomodoro Timer with customizable intervals</li>
@@ -82,7 +82,7 @@ export default function AboutUsPage() {
                 </ol>
                 <button className="cta-button">JOIN ROOM</button>
               </div>
-              <div className="planet-image" style={{ backgroundImage: 'url(/saturn.png)' }}></div>
+             <div className="planet-image"><img src="/cat3.png" alt="test image" /> </div>
             </div>
           </div>
         </section>
@@ -115,7 +115,7 @@ export default function AboutUsPage() {
             <h1>User Reports</h1>
             
             <div className="content-grid">
-              <div className="planet-image" style={{ backgroundImage: 'url(../mars.png)' }}></div>
+             <div className="planet-image"><img src="/cat1.png" alt="test image" /> </div>
               <div className="text-content">
                 <ul className="features-list">
                   <li>Pomodoro Timer with customizable intervals</li>

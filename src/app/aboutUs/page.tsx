@@ -104,7 +104,7 @@ export default function AboutUsPage() {
                 </ol>
                 <button className="cta-button">Go to Calendar</button>
               </div>
-              <div className="planet-image"><img src="/rabit.png" alt="test image" /> </div>
+              <div className="planet-image"><img src="/cat6.png" alt="test image" /> </div>
 
             </div>
           </div>

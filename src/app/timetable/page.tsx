@@ -1,6 +1,5 @@
 "use client";
-import { useState, useMemo, useCallback, memo } from 'react';
-import { FixedSizeList as List } from 'react-window';
+import React, { useState, useMemo, useCallback, memo } from "react";
 
 type EventData = {
   time: string;
@@ -18,186 +17,340 @@ type ModalState = {
   isEditing: boolean;
 };
 
-const colorOptions = [
+type TimeSlotProps = {
+  time: string;
+  day: string;
+  event?: EventData;
+  handleSlotClick: (time: string, day: string) => void;
+  removeEvent: (time: string, day: string) => void;
+};
+
+type ModalProps = {
+  modalState: ModalState;
+  setModalState: React.Dispatch<React.SetStateAction<ModalState>>;
+  saveEvent: () => void;
+  removeEvent: (time: string, day: string) => void;
+};
+
+const COLOR_OPTIONS = [
   { name: "Blue", value: "#3b82f6" },
   { name: "Red", value: "#ef4444" },
   { name: "Green", value: "#10b981" },
   { name: "Purple", value: "#8b5cf6" },
   { name: "Yellow", value: "#f59e0b" },
   { name: "Pink", value: "#ec4899" },
-];
+] as const;
 
-const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 
 const DayHeader = memo(({ day }: { day: string }) => (
-  <div className="flex-1 min-w-[120px] p-2 font-bold text-center border">
-    {day.substring(0, 3).toUpperCase()}
+  <div className="p-2 font-bold text-center border border-[black] bg-[#3d312e] text-[#f0eeee] text-sm">
+    {day}
   </div>
 ));
 
-const TimeSlot = memo(({ 
-  time, 
-  day, 
-  event, 
-  handleSlotClick, 
-  removeEvent 
-}: { 
-  time: string; 
-  day: string; 
-  event?: EventData; 
-  handleSlotClick: (time: string, day: string) => void; 
-  removeEvent: (time: string, day: string) => void; 
-}) => (
-  <div
-    className="flex-1 min-w-[120px] p-2 border hover:bg-gray-50 cursor-pointer h-16"
-    onClick={() => handleSlotClick(time, day)}
-  >
-    {event && (
-      <div 
-        className="flex justify-between items-center p-1 rounded h-full"
-        style={{ 
-          backgroundColor: `${event.color}20`,
-          borderLeft: `4px solid ${event.color}`
-        }}
-      >
-        <span className="truncate text-sm">{event.event}</span>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            removeEvent(time, day);
-          }}
-          className="text-red-500 hover:text-red-700 text-lg font-bold px-1"
+const TimeSlot = memo(({
+  time,
+  day,
+  event,
+  handleSlotClick,
+  removeEvent
+}: TimeSlotProps) => {
+  const handleRemove = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    removeEvent(time, day);
+  }, [time, day, removeEvent]);
+
+  return (
+    <div
+      className="border border-[black] min-h-[40px] hover:bg-[#f0eeee] cursor-pointer flex items-center justify-center p-1 bg-white"
+      onClick={() => handleSlotClick(time, day)}
+      aria-label={`Time slot for ${day} at ${time}`}
+    >
+      {event && (
+        <div
+          className="flex justify-between items-center w-full px-1 py-0.5 rounded text-white text-xs font-medium"
+          style={{ backgroundColor: event.color }}
         >
-          ×
-        </button>
+          <span className="truncate text-[0.7rem]">{event.event}</span>
+          <button
+            onClick={handleRemove}
+            className="ml-1 text-white text-sm font-bold leading-none"
+            aria-label={`Remove event ${event.event}`}
+          >
+            ×
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
+
+const Modal = memo(({
+  modalState,
+  setModalState,
+  saveEvent,
+  removeEvent
+}: ModalProps) => {
+  const handleColorChange = useCallback((color: string) => {
+    setModalState(prev => ({ ...prev, color }));
+  }, []);
+
+  const handleEventChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setModalState(prev => ({ ...prev, event: e.target.value }));
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setModalState(prev => ({ ...prev, show: false }));
+  }, []);
+
+  const handleDelete = useCallback(() => {
+    removeEvent(modalState.time, modalState.day);
+    handleClose();
+  }, [modalState.time, modalState.day, removeEvent, handleClose]);
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg max-w-md w-full">
+        <h2 className="text-xl font-bold mb-4 text-[#3d312e]">
+          {modalState.isEditing ? "Edit" : "Add"} Event at {modalState.time}
+        </h2>
+        <input
+          type="text"
+          value={modalState.event}
+          onChange={handleEventChange}
+          className="border border-[black] p-2 rounded w-full mb-4 text-[#3d312e]"
+          placeholder="Event name"
+          autoFocus
+          aria-label="Event name input"
+        />
+        <div className="mb-4">
+          <label className="block mb-2 text-[#3d312e]">Color:</label>
+          <div className="flex flex-wrap gap-2">
+            {COLOR_OPTIONS.map((color) => (
+              <button
+                key={color.value}
+                className={`w-8 h-8 rounded-full ${
+                  modalState.color === color.value
+                    ? "ring-2 ring-offset-2 ring-[#bba2a2]"
+                    : ""
+                }`}
+                style={{ backgroundColor: color.value }}
+                onClick={() => handleColorChange(color.value)}
+                title={color.name}
+                aria-label={`Select ${color.name} color`}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={handleClose}
+            className="px-4 py-2 border border-[black] rounded text-[#3d312e]"
+            aria-label="Cancel"
+          >
+            Cancel
+          </button>
+          {modalState.isEditing && (
+            <button
+              onClick={handleDelete}
+              className="px-4 py-2 bg-red-500 text-white rounded"
+              aria-label="Delete event"
+            >
+              Delete
+            </button>
+          )}
+          <button
+            onClick={saveEvent}
+            className="px-4 py-2 bg-[#3d312e] text-[#f0eeee] rounded"
+            aria-label={modalState.isEditing ? "Update event" : "Add event"}
+          >
+            {modalState.isEditing ? "Update" : "Add"}
+          </button>
+        </div>
       </div>
-    )}
-  </div>
-));
+    </div>
+  );
+});
 
 export default function Timetable() {
   const [schedule, setSchedule] = useState<EventData[]>([]);
-  const [timeInterval, setTimeInterval] = useState(60);
+  const [timeInterval, setTimeInterval] = useState<30 | 60 | 120>(60);
+  const [dayRange, setDayRange] = useState<{
+    startDay: typeof ALL_DAYS[number];
+    endDay: typeof ALL_DAYS[number];
+  }>({ startDay: "Monday", endDay: "Friday" });
   const [modalState, setModalState] = useState<ModalState>({
     show: false,
     time: "",
     day: "",
     event: "",
     color: "#3b82f6",
-    isEditing: false
+    isEditing: false,
   });
 
-  const times = useMemo(() => {
-    const slots = [];
-    let totalMinutes = 5 * 60; // 5:00 AM start
-    const endMinutes = 29 * 60; // 5:00 AM next day (24 hours later)
+  const selectedDays = useMemo(() => {
+    const startIndex = ALL_DAYS.indexOf(dayRange.startDay);
+    const endIndex = ALL_DAYS.indexOf(dayRange.endDay);
+    
+    if (startIndex <= endIndex) {
+      return ALL_DAYS.slice(startIndex, endIndex + 1);
+    } else {
+      return [...ALL_DAYS.slice(startIndex), ...ALL_DAYS.slice(0, endIndex + 1)];
+    }
+  }, [dayRange]);
 
-    while (totalMinutes < endMinutes) {
-      const hour = Math.floor(totalMinutes / 60) % 24;
+  const times = useMemo(() => {
+    const slots: string[] = [];
+    let totalMinutes = 0;
+    const endMinutes = 24 * 60 - timeInterval;
+
+    while (totalMinutes <= endMinutes) {
+      const hour = Math.floor(totalMinutes / 60);
       const minute = totalMinutes % 60;
-      const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      const timeStr = `${String(hour).padStart(2, "0")}:${String(
+        minute
+      ).padStart(2, "0")}`;
       slots.push(timeStr);
       totalMinutes += timeInterval;
     }
-    
+
     return slots;
   }, [timeInterval]);
 
   const eventMap = useMemo(() => {
     const map = new Map<string, EventData>();
-    schedule.forEach(event => map.set(`${event.day}-${event.time}`, event));
+    schedule.forEach((event) => {
+      map.set(`${event.day}-${event.time}`, event);
+    });
     return map;
   }, [schedule]);
 
-  const handleSlotClick = useCallback((time: string, day: string) => {
-    const event = eventMap.get(`${day}-${time}`);
-    setModalState({
-      show: true,
-      time,
-      day,
-      event: event?.event || "",
-      color: event?.color || "#3b82f6",
-      isEditing: !!event
-    });
-  }, [eventMap]);
+  const handleSlotClick = useCallback(
+    (time: string, day: string) => {
+      const event = eventMap.get(`${day}-${time}`);
+      setModalState({
+        show: true,
+        time,
+        day,
+        event: event?.event || "",
+        color: event?.color || "#3b82f6",
+        isEditing: !!event,
+      });
+    },
+    [eventMap]
+  );
 
   const saveEvent = useCallback(() => {
     if (modalState.event.trim()) {
-      setSchedule(prevSchedule => [
-        ...prevSchedule.filter(e => !(e.time === modalState.time && e.day === modalState.day)),
+      setSchedule(prev => [
+        ...prev.filter(
+          e => !(e.time === modalState.time && e.day === modalState.day)
+        ),
         {
           time: modalState.time,
           day: modalState.day,
           event: modalState.event,
-          color: modalState.color
-        }
+          color: modalState.color,
+        },
       ]);
-      setModalState(prevModal => ({ ...prevModal, show: false }));
+      setModalState(prev => ({ ...prev, show: false }));
     }
   }, [modalState]);
 
   const removeEvent = useCallback((time: string, day: string) => {
-    setSchedule(prevSchedule => prevSchedule.filter(e => !(e.time === time && e.day === day)));
+    setSchedule(prev =>
+      prev.filter(e => !(e.time === time && e.day === day))
+    );
   }, []);
 
-  const Row = memo(({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const time = times[index];
-    
-    return (
-      <div style={style} className="flex border-b">
-        <div className="w-24 p-2 font-bold bg-gray-50 flex-shrink-0 border-r">{time}</div>
-        {days.map(day => {
-          const event = eventMap.get(`${day}-${time}`);
-          return (
-            <TimeSlot
-              key={day}
-              time={time}
-              day={day}
-              event={event}
-              handleSlotClick={handleSlotClick}
-              removeEvent={removeEvent}
-            />
-          );
-        })}
-      </div>
-    );
-  });
-
   return (
-    <div className="flex flex-col items-center p-4 max-w-6xl mx-auto">
-
-      <div className="flex flex-wrap gap-4 mb-4 p-4 bg-gray-50 rounded-lg w-full justify-center">
+    <div className="flex flex-col items-center p-4 max-w-6xl mx-auto bg-white">
+      <div className="flex flex-wrap gap-4 mb-4 p-4 rounded-lg w-full justify-center bg-white">
         <div className="flex items-center gap-2">
-          <label>Time Interval:</label>
+          <label htmlFor="timeInterval" className="text-[#3d312e]">Time Interval:</label>
           <select
+            id="timeInterval"
             value={timeInterval}
-            onChange={(e) => setTimeInterval(Number(e.target.value))}
-            className="border p-1 rounded"
+            onChange={(e) => setTimeInterval(Number(e.target.value) as 30 | 60 | 120)}
+            className="border border-[black] p-1 rounded text-[#3d312e]"
           >
-            {[15, 30, 60, 120].map(mins => (
-              <option key={mins} value={mins}>{mins} mins</option>
+            {[30, 60, 120].map((mins) => (
+              <option key={mins} value={mins}>
+                {mins} mins
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <label htmlFor="startDay" className="text-[#3d312e]">From:</label>
+          <select
+            id="startDay"
+            value={dayRange.startDay}
+            onChange={(e) => setDayRange(prev => ({
+              ...prev,
+              startDay: e.target.value as typeof ALL_DAYS[number]
+            }))}
+            className="border border-[black] p-1 rounded text-[#3d312e]"
+          >
+            {ALL_DAYS.map(day => (
+              <option key={`start-${day}`} value={day}>{day}</option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <label htmlFor="endDay" className="text-[#3d312e]">To:</label>
+          <select
+            id="endDay"
+            value={dayRange.endDay}
+            onChange={(e) => setDayRange(prev => ({
+              ...prev,
+              endDay: e.target.value as typeof ALL_DAYS[number]
+            }))}
+            className="border border-[black] p-1 rounded text-[#3d312e]"
+          >
+            {ALL_DAYS.map(day => (
+              <option key={`end-${day}`} value={day}>{day}</option>
             ))}
           </select>
         </div>
       </div>
 
-      <div className="w-full overflow-hidden border rounded-lg">
-        <div className="flex bg-gray-100 border-b">
-          <div className="w-24 p-2 font-bold flex-shrink-0 border-r">TIME</div>
-          {days.map(day => (
+      <div className="overflow-auto w-full border border-[black] rounded-lg max-h-[80vh]">
+        <div className="grid" style={{
+          gridTemplateColumns: `80px repeat(${selectedDays.length}, minmax(120px, 1fr))`
+        }}>
+          <div className="p-2 font-bold border border-[black] text-center bg-[#3d312e] text-[#f0eeee] text-sm">
+            TIME
+          </div>
+          
+          {selectedDays.map((day) => (
             <DayHeader key={day} day={day} />
           ))}
-        </div>
 
-        <List
-          height={800}
-          itemCount={times.length}
-          itemSize={60}
-          width="100%"
-          key={timeInterval}
-        >
-          {Row}
-        </List>
+          {times.map((time) => (
+            <React.Fragment key={time}>
+              <div className="p-1 font-bold text-center border border-[black] bg-white text-[#3d312e] text-sm">
+                {time}
+              </div>
+              {selectedDays.map((day) => {
+                const event = eventMap.get(`${day}-${time}`);
+                return (
+                  <TimeSlot
+                    key={`${day}-${time}`}
+                    time={time}
+                    day={day}
+                    event={event}
+                    handleSlotClick={handleSlotClick}
+                    removeEvent={removeEvent}
+                  />
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
 
       {modalState.show && (
@@ -211,86 +364,3 @@ export default function Timetable() {
     </div>
   );
 }
-
-const Modal = memo(({
-  modalState,
-  setModalState,
-  saveEvent,
-  removeEvent
-}: {
-  modalState: ModalState;
-  setModalState: React.Dispatch<React.SetStateAction<ModalState>>;
-  saveEvent: () => void;
-  removeEvent: (time: string, day: string) => void;
-}) => {
-  const handleColorChange = useCallback((color: string) => {
-    setModalState(prev => ({ ...prev, color }));
-  }, []);
-
-  const handleEventChange = useCallback((event: string) => {
-    setModalState(prev => ({ ...prev, event }));
-  }, []);
-
-  const handleClose = useCallback(() => {
-    setModalState(prev => ({ ...prev, show: false }));
-  }, []);
-
-  const handleDelete = useCallback(() => {
-    removeEvent(modalState.time, modalState.day);
-    setModalState(prev => ({ ...prev, show: false }));
-  }, [modalState.time, modalState.day, removeEvent]);
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg max-w-md w-full">
-        <h2 className="text-xl font-bold mb-4">
-          {modalState.isEditing ? "Edit" : "Add"} Event at {modalState.time}
-        </h2>
-        <input
-          type="text"
-          value={modalState.event}
-          onChange={(e) => handleEventChange(e.target.value)}
-          className="border p-2 rounded w-full mb-4"
-          placeholder="Event name"
-          autoFocus
-        />
-        <div className="mb-4">
-          <label className="block mb-2">Color:</label>
-          <div className="flex flex-wrap gap-2">
-            {colorOptions.map(color => (
-              <button
-                key={color.value}
-                className={`w-8 h-8 rounded-full ${modalState.color === color.value ? 'ring-2 ring-offset-2 ring-gray-400' : ''}`}
-                style={{ backgroundColor: color.value }}
-                onClick={() => handleColorChange(color.value)}
-                title={color.name}
-              />
-            ))}
-          </div>
-        </div>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={handleClose}
-            className="px-4 py-2 border rounded"
-          >
-            Cancel
-          </button>
-          {modalState.isEditing && (
-            <button
-              onClick={handleDelete}
-              className="px-4 py-2 bg-red-500 text-white rounded"
-            >
-              Delete
-            </button>
-          )}
-          <button
-            onClick={saveEvent}
-            className="px-4 py-2 bg-blue-500 text-white rounded"
-          >
-            {modalState.isEditing ? "Update" : "Add"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-});

@@ -7,7 +7,10 @@ export async function POST(req: Request) {
     const { username, password } = await req.json();
 
     if (!username?.trim() || !password) {
-      return NextResponse.json({ success: false, message: 'Username and password are required' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: 'Username and password are required' },
+        { status: 400 }
+      );
     }
 
     const connection = await mysql.createConnection({
@@ -26,42 +29,53 @@ export async function POST(req: Request) {
       const user = (users as any[])[0];
 
       if (!user) {
-        return NextResponse.json({ success: false, message: 'Invalid username or password' }, { status: 401 });
+        return NextResponse.json(
+          { success: false, message: 'Invalid credentials' },
+          { status: 401 }
+        );
       }
 
       const passwordMatch = await bcrypt.compare(password, user.password);
       if (!passwordMatch) {
-        return NextResponse.json({ success: false, message: 'Invalid username or password' }, { status: 401 });
+        return NextResponse.json(
+          { success: false, message: 'Invalid credentials' },
+          { status: 401 }
+        );
       }
-
-      const roles: Record<number, string> = {
-        1: 'admin',
-        2: 'user',
-        3: 'pro_user'
-      };
-
-      const role = user.role_id in roles ? roles[user.role_id] : 'user';
 
       const response = NextResponse.json({
         success: true,
-        role,
-        userId: user.user_id,
-        username: user.name
+        user: {
+          id: user.user_id,
+          name: user.name,
+          role: user.role_id === 1 ? 'admin' : 'user'
+        }
       });
 
-      // Set both 'loggedIn' and 'role' cookies
-response.cookies.set('loggedIn', 'true', {
-  sameSite: 'strict',
-  path: '/',
-  maxAge: 60 * 60 * 24,
-});
+      // Set secure cookies
+      response.cookies.set('loggedIn', 'true', {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 24 * 7 // 1 week
+      });
 
-response.cookies.set('role', role, {
-  sameSite: 'strict',
-  path: '/',
-  maxAge: 60 * 60 * 24,
-});
+      response.cookies.set('userId', user.user_id.toString(), {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 24 * 7
+      });
 
+      response.cookies.set('role', user.role_id === 1 ? 'admin' : 'user', {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 24 * 7
+      });
 
       return response;
 
@@ -71,6 +85,9 @@ response.cookies.set('role', role, {
 
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

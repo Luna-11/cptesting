@@ -26,6 +26,15 @@ type DailyReportDataItem = {
   end: number;
 };
 
+type StudySession = {
+  id: string;
+  startTime: Date;
+  endTime: Date;
+  duration: number; // in minutes
+  taskName: string;
+  category: string;
+};
+
 type MiniCalendarProps = {
   studyData: StudyDataItem[];
   onDayClick: (day: number) => void;
@@ -72,6 +81,33 @@ const dailyReportData: DailyReportDataItem[] = [
   { day: "Friday", start: 11, end: 17 },
   { day: "Saturday", start: 7, end: 8 },
   { day: "Sunday", start: 9, end: 12 },
+];
+
+const timelineData: StudySession[] = [
+  {
+    id: "1",
+    startTime: new Date(2025, 6, 10, 5, 0),
+    endTime: new Date(2025, 6, 10, 9, 2),
+    duration: 242, // 4h 2m
+    taskName: "Mathematics",
+    category: "Study"
+  },
+  {
+    id: "2",
+    startTime: new Date(2025, 6, 10, 9, 2),
+    endTime: new Date(2025, 6, 10, 9, 2),
+    duration: 0.13, // 8s
+    taskName: "Break",
+    category: "Work"
+  },
+  {
+    id: "3",
+    startTime: new Date(2025, 6, 10, 9, 2),
+    endTime: new Date(2025, 6, 10, 9, 2),
+    duration: 0.4, // 24s
+    taskName: "Quick Review",
+    category: "Study"
+  }
 ];
 
 const COLORS = ["#DEB69C", "#722f37", "#C08baf", "#61463B"];
@@ -150,7 +186,7 @@ const MiniCalendar = ({ studyData, onDayClick }: MiniCalendarProps) => {
   };
 
   return (
-    <div className="border p-4 rounded shadow-lg bg-white">
+    <div className="border p-4 rounded shadow-lg bg-white h-fit">
       <div className="flex justify-between items-center mb-4">
         <button 
           onClick={() => changeMonth(-1)}
@@ -184,6 +220,45 @@ const MiniCalendar = ({ studyData, onDayClick }: MiniCalendarProps) => {
           <div className="w-3 h-3 rounded-full bg-amber-100 mr-1"></div>
           <span className="text-xs">Study day</span>
         </div>
+      </div>
+    </div>
+  );
+};
+
+const TimelineChart = ({ data }: { data: StudySession[] }) => {
+  const formatDuration = (minutes: number) => {
+    if (minutes < 1) {
+      return `${Math.round(minutes * 60)}s`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  return (
+    <div className="border p-4 rounded shadow-lg bg-white">
+      <h2 className="text-xl font-semibold mb-4">Study Session Timeline</h2>
+      <div className="space-y-4">
+        {data.map((session) => (
+          <div key={session.id} className="border-b pb-4 last:border-b-0">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-medium">{session.taskName}</h3>
+                <p className="text-sm text-gray-500">{session.category}</p>
+              </div>
+              <span className="text-sm font-medium bg-amber-100 px-2 py-1 rounded">
+                {formatDuration(session.duration)}
+              </span>
+            </div>
+            <div className="mt-2 text-sm text-gray-600">
+              {formatTime(session.startTime)} ~ {formatTime(session.endTime)}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -224,10 +299,80 @@ export default function UserReportPage() {
       <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
       <div className="flex-1 p-4">
         <Navbar />
-        <h1 className="text-3xl font-bold text-center mb-4">User Report</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {/* Mini Calendar */}
-          <div className="md:col-span-1 lg:col-span-1">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Main content area with charts */}
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-center mb-4">User Report</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Timeline Chart - spans full width */}
+              <div className="md:col-span-2">
+                <TimelineChart data={timelineData} />
+              </div>
+
+              {/* Study Hours Chart */}
+              <div className="border p-4 rounded shadow-lg bg-white">
+                <h2 className="text-xl font-semibold mb-2">Study Hours (Weekly)</h2>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={studyData}>
+                    <XAxis dataKey="day" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="hours" fill="#693f26" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Break Hours Chart */}
+              <div className="border p-4 rounded shadow-lg bg-white">
+                <h2 className="text-xl font-semibold mb-2">Break Hours (Types)</h2>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie data={breakData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#82ca9d" label>
+                      {breakData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>   
+                </ResponsiveContainer>
+              </div>
+
+              {/* Overall Study and Break Hours Chart */}
+              <div className="border p-4 rounded shadow-lg bg-white">
+                <h2 className="text-xl font-semibold mb-2">Overall Study and Break Hours</h2>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={overallData}>
+                    <XAxis dataKey="day" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="study" stroke="#5c4033" />
+                    <Line type="monotone" dataKey="break" stroke="#9989aA" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Start to End Per Day Bar Chart */}
+              <div className="border p-4 rounded shadow-lg bg-white">
+                <h2 className="text-xl font-semibold mb-2">Start to End Per Day</h2>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={dailyReportData}>
+                    <XAxis dataKey="day" />
+                    <YAxis domain={[0, 24]} tickFormatter={(tick) => `${tick}:00`} />
+                    <Tooltip formatter={(value) => `${value}:00`} />
+                    <Legend />
+                    <Bar dataKey="start" fill="#5c4033" />
+                    <Bar dataKey="end" fill="#C79baf" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Sticky Calendar on the right */}
+          <div className="lg:w-80 lg:sticky lg:top-4 lg:self-start">
             <MiniCalendar studyData={studyData} onDayClick={handleDayClick} />
             {selectedDay && (
               <div className="mt-4 p-4 border rounded bg-white shadow">
@@ -237,66 +382,6 @@ export default function UserReportPage() {
                 </p>
               </div>
             )}
-          </div>
-
-          {/* Study Hours Chart */}
-          <div className="border p-4 rounded shadow-lg bg-white">
-            <h2 className="text-xl font-semibold mb-2">Study Hours (Weekly)</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={studyData}>
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="hours" fill="#693f26" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Break Hours Chart */}
-          <div className="border p-4 rounded shadow-lg bg-white">
-            <h2 className="text-xl font-semibold mb-2">Break Hours (Types)</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie data={breakData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#82ca9d" label>
-                  {breakData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>   
-            </ResponsiveContainer>
-          </div>
-
-          {/* Overall Study and Break Hours Chart */}
-          <div className="border p-4 rounded shadow-lg bg-white">
-            <h2 className="text-xl font-semibold mb-2">Overall Study and Break Hours</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={overallData}>
-                <XAxis dataKey="day" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="study" stroke="#5c4033" />
-                <Line type="monotone" dataKey="break" stroke="#9989aA" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Start to End Per Day Bar Chart */}
-          <div className="border p-4 rounded shadow-lg bg-white">
-            <h2 className="text-xl font-semibold mb-2">Start to End Per Day</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dailyReportData}>
-                <XAxis dataKey="day" />
-                <YAxis domain={[0, 24]} tickFormatter={(tick) => `${tick}:00`} />
-                <Tooltip formatter={(value) => `${value}:00`} />
-                <Legend />
-                <Bar dataKey="start" fill="#5c4033" />
-                <Bar dataKey="end" fill="#C79baf" />
-              </BarChart>
-            </ResponsiveContainer>
           </div>
         </div>
       </div>

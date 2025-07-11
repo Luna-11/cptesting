@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState } from 'react';
 import Image from 'next/image';
@@ -28,18 +28,14 @@ export default function Login() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
+        credentials: 'include' // Important for cookies
       });
 
       const data = await res.json();
 
       if (res.ok && data.success) {
-        alert(`Logged in as ${data.role}`);
-
-        // ✅ Set cookie for middleware to detect
-        document.cookie = "loggedIn=true; path=/";
-
-        // ✅ Redirect to home page
+        alert(`Logged in as ${data.user.role}`);
         router.push('/');
       } else {
         alert(data.message || 'Login failed.');

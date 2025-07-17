@@ -1,10 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function BackgroundImageTimer() {
   const [time, setTime] = useState(1500); // 25 minutes in seconds
   const [isRunning, setIsRunning] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const imageSources = [
     "/bg.jpg", 
     "/bg1.jpg", 
@@ -15,16 +16,18 @@ export default function BackgroundImageTimer() {
   ];
 
   useEffect(() => {
-    let timer: NodeJS.Timeout | null = null;
 
     if (isRunning && time > 0) {
-      timer = setInterval(() => setTime((prev) => prev - 1), 1000);
+      timerRef.current = setInterval(() => setTime((prev) => prev - 1), 1000);
     } else if (time === 0) {
       setIsRunning(false); // Auto-pause when timer reaches 0
     }
 
     return () => {
-      if (timer) clearInterval(timer);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [isRunning, time]);
 

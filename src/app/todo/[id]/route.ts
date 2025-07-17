@@ -1,27 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@script/db'
+import { db } from '@script/db';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const [rows] = await db.query('SELECT * FROM todo_tasks WHERE task_id = ?', [params.id]);
-  if ((rows as any[]).length === 0) {
-    return NextResponse.json({ message: 'Task not found.' }, { status: 404 });
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const [rows] = await db.query(
+      'SELECT * FROM todo_tasks WHERE task_id = ?',
+      [params.id]
+    );
+    
+    if ((rows as any[]).length === 0) {
+      return NextResponse.json(
+        { message: 'Task not found.' },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json((rows as any[])[0]);
+  } catch (error) {
+    console.error('Database error:', error);
+    return NextResponse.json(
+      { message: 'Failed to fetch task' },
+      { status: 500 }
+    );
   }
-  return NextResponse.json((rows as any[])[0]);
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const body = await req.json();
-  const { task_name, status, subject_id, completed_at, important } = body;
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const body = await req.json();
+    const { task_name, status, subject_id, important } = body;
 
-  await db.query(
-    'UPDATE todo_tasks SET task_name = ?, status = ?, subject_id = ?, completed_at = ?, important = ? WHERE task_id = ?',
-    [task_name, status, subject_id, completed_at, important, params.id]
-  );
+    await db.query(
+      `UPDATE todo_tasks 
+       SET task_name = ?, status = ?, subject_id = ?, important = ?
+       WHERE task_id = ?`,
+      [task_name, status, subject_id, important, params.id]
+    );
 
-  return NextResponse.json({ message: 'Task updated.' });
+    // Return the updated task
+    const [updatedTask] = await db.query(
+      'SELECT * FROM todo_tasks WHERE task_id = ?',
+      [params.id]
+    );
+
+    return NextResponse.json((updatedTask as any[])[0]);
+  } catch (error) {
+    console.error('Database error:', error);
+    return NextResponse.json(
+      { message: 'Failed to update task' },
+      { status: 500 }
+    );
+  }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  await db.query('DELETE FROM todo_tasks WHERE task_id = ?', [params.id]);
-  return NextResponse.json({ message: 'Task deleted.' });
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await db.query('DELETE FROM todo_tasks WHERE task_id = ?', [params.id]);
+    return NextResponse.json({ message: 'Task deleted successfully' });
+  } catch (error) {
+    console.error('Database error:', error);
+    return NextResponse.json(
+      { message: 'Failed to delete task' },
+      { status: 500 }
+    );
+  }
 }

@@ -5,6 +5,8 @@ import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { ArrowsUpDownIcon } from "@heroicons/react/24/outline";
 import { Work_Sans } from "next/font/google";
 
+
+
 // Configure the Work Sans font
 const workSans = Work_Sans({
   subsets: ["latin"],

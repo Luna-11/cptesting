@@ -565,27 +565,7 @@ export default function AdminDashboard() {
   );
 
   const ReportsTab = () => (
-    <div className="space-y-6">
-      {/* Report Actions */}
-      <div className="bg-white p-4 rounded-lg shadow-md">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <h3 className="text-lg font-semibold">Generate Reports</h3>
-          <div className="flex gap-2">
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Download className="w-4 h-4" />
-              Export Users
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-              <Download className="w-4 h-4" />
-              Export Activity
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-              <Download className="w-4 h-4" />
-              Revenue Report
-            </button>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-12">
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

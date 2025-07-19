@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Allow login, register, and API routes
-  if (pathname.startsWith('/api') || pathname === '/login' || pathname === '/register') {
+  if (pathname.startsWith('/api') || pathname === '/logIn' || pathname === '/register') {
     return NextResponse.next();
   }
 

@@ -1,5 +1,5 @@
 // components/Timer.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 type TimerProps = {
   subject: string;
@@ -9,15 +9,20 @@ type TimerProps = {
 export default function Timer({ subject, onStop }: TimerProps) {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(true);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
     if (isRunning) {
-      interval = setInterval(() => {
+      timerRef.current = setInterval(() => {
         setTime((prev) => prev + 1);
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
   }, [isRunning]);
 
   return (

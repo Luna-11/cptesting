@@ -2,8 +2,9 @@
 
 import React, { useState, useMemo, useCallback, memo, useEffect } from "react"
 
-const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const
-type Day = typeof ALL_DAYS[number]
+// Align ALL_DAYS with Date.getDay() where Sunday is 0, Monday is 1, etc.
+const ALL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const
+type Day = (typeof ALL_DAYS)[number]
 
 const COLOR_OPTIONS = [
   { name: "Blue", value: "#3b82f6" },
@@ -15,8 +16,9 @@ const COLOR_OPTIONS = [
 ] as const
 
 type EventData = {
-  time: string
+  id: number
   day: Day
+  time: string
   event: string
   color: string
 }
@@ -28,6 +30,7 @@ type ModalState = {
   event: string
   color: string
   isEditing: boolean
+  id?: number
 }
 
 type TimeSlotProps = {
@@ -35,7 +38,7 @@ type TimeSlotProps = {
   day: Day
   event?: EventData
   handleSlotClick: (time: string, day: Day) => void
-  removeEvent: (time: string, day: Day) => void
+  removeEvent: (id: number) => void
 }
 
 const DayHeader = memo(({ day }: { day: Day }) => (
@@ -46,9 +49,11 @@ const TimeSlot = memo(({ time, day, event, handleSlotClick, removeEvent }: TimeS
   const handleRemove = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      removeEvent(time, day)
+      if (event?.id) {
+        removeEvent(event.id)
+      }
     },
-    [time, day, removeEvent],
+    [event, removeEvent],
   )
 
   return (
@@ -98,28 +103,32 @@ export default function Timetable() {
     const fetchEvents = async () => {
       try {
         const response = await fetch("/api/timetable", {
-          credentials: 'include'
+          credentials: "include",
         })
-        
         if (!response.ok) {
-          throw new Error("Failed to fetch events")
+          const errorData = await response.json()
+          console.error("Failed to fetch events:", errorData)
+          throw new Error(errorData.error || "Failed to fetch events")
         }
-        
         const data = await response.json()
-        setSchedule(data.events || [])
+        setSchedule(data || [])
       } catch (error) {
         console.error("Error fetching events:", error)
       } finally {
         setIsLoading(false)
       }
     }
-
     fetchEvents()
   }, [])
 
   const selectedDays = useMemo(() => {
     const startIndex = ALL_DAYS.indexOf(dayRange.startDay)
     const endIndex = ALL_DAYS.indexOf(dayRange.endDay)
+
+    if (startIndex === -1 || endIndex === -1) {
+      return []
+    }
+
     if (startIndex <= endIndex) {
       return ALL_DAYS.slice(startIndex, endIndex + 1)
     } else {
@@ -159,58 +168,28 @@ export default function Timetable() {
         event: event?.event || "",
         color: event?.color || "#3b82f6",
         isEditing: !!event,
+        id: event?.id,
       })
     },
     [eventMap],
   )
 
-  const getNextDateForDay = useCallback((dayName: Day): string => {
-    const today = new Date()
-    const currentDayOfWeek = today.getDay()
-    
-    const dayMap: Record<Day, number> = {
-      Sunday: 0,
-      Monday: 1,
-      Tuesday: 2,
-      Wednesday: 3,
-      Thursday: 4,
-      Friday: 5,
-      Saturday: 6,
-    }
-
-    const targetDayOfWeek = dayMap[dayName]
-    let daysToAdd = targetDayOfWeek - currentDayOfWeek
-    if (daysToAdd < 0) daysToAdd += 7
-
-    const targetDate = new Date(today)
-    targetDate.setDate(today.getDate() + daysToAdd)
-    return targetDate.toISOString().split('T')[0]
-  }, [])
-
   const saveEvent = useCallback(async () => {
     if (!modalState.event.trim()) return
 
-    const newEvent = {
-      time: modalState.time,
-      day: modalState.day,
-      event: modalState.event,
-      color: modalState.color,
-    }
-
     try {
-      const dateForEvent = getNextDateForDay(modalState.day)
-      
       const response = await fetch("/api/timetable", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          date: dateForEvent,
-          time: newEvent.time,
-          task_name: newEvent.event,
+          day: modalState.day,
+          time: modalState.time,
+          task_name: modalState.event,
+          color: modalState.color,
         }),
-        credentials: 'include'
+        credentials: "include",
       })
 
       if (!response.ok) {
@@ -218,44 +197,43 @@ export default function Timetable() {
         throw new Error(errorData.message || "Failed to save event")
       }
 
-      // Update local state only after successful API call
-      setSchedule((prev) => [
-        ...prev.filter((e) => !(e.time === modalState.time && e.day === modalState.day)),
-        newEvent,
-      ])
+      const responseData = await response.json()
+      const savedEvent = responseData.data
 
+      // Update local state
+      setSchedule((prev) => {
+        // Remove old event if editing, then add the new/updated event
+        const filtered = prev.filter((e) => e.id !== modalState.id)
+        return [...filtered, savedEvent]
+      })
     } catch (err) {
       console.error("Error saving event:", err)
       alert(err instanceof Error ? err.message : "Failed to save event")
       return
     }
-
     setModalState((prev) => ({ ...prev, show: false }))
-  }, [modalState, getNextDateForDay])
+  }, [modalState])
 
-  const removeEvent = useCallback(async (time: string, day: Day) => {
+  const removeEvent = useCallback(async (id: number) => {
     try {
       const response = await fetch("/api/timetable", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          time,
-          day,
-        }),
-        credentials: 'include'
+        body: JSON.stringify({ id }),
+        credentials: "include",
       })
 
       if (!response.ok) {
-        throw new Error("Failed to delete event")
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to delete event")
       }
 
-      // Update local state only after successful API call
-      setSchedule((prev) => prev.filter((e) => !(e.time === time && e.day === day)))
+      setSchedule((prev) => prev.filter((e) => e.id !== id))
     } catch (err) {
       console.error("Error removing event:", err)
-      alert("Failed to remove event")
+      alert(err instanceof Error ? err.message : "Failed to remove event")
     }
   }, [])
 
@@ -376,7 +354,7 @@ export default function Timetable() {
             <input
               type="text"
               value={modalState.event}
-              onChange={(e) => setModalState(prev => ({ ...prev, event: e.target.value }))}
+              onChange={(e) => setModalState((prev) => ({ ...prev, event: e.target.value }))}
               className="border border-[black] p-2 rounded w-full mb-4 text-[#3d312e]"
               placeholder="Event name"
               autoFocus
@@ -387,11 +365,9 @@ export default function Timetable() {
                 {COLOR_OPTIONS.map((color) => (
                   <button
                     key={color.value}
-                    className={`w-8 h-8 rounded-full ${
-                      modalState.color === color.value ? "ring-2 ring-offset-2 ring-[#bba2a2]" : ""
-                    }`}
+                    className={`w-8 h-8 rounded-full ${modalState.color === color.value ? "ring-2 ring-offset-2 ring-[#bba2a2]" : ""}`}
                     style={{ backgroundColor: color.value }}
-                    onClick={() => setModalState(prev => ({ ...prev, color: color.value }))}
+                    onClick={() => setModalState((prev) => ({ ...prev, color: color.value }))}
                     title={color.name}
                   />
                 ))}
@@ -399,23 +375,20 @@ export default function Timetable() {
             </div>
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setModalState(prev => ({ ...prev, show: false }))}
+                onClick={() => setModalState((prev) => ({ ...prev, show: false }))}
                 className="px-4 py-2 border border-[black] rounded text-[#3d312e]"
               >
                 Cancel
               </button>
               {modalState.isEditing && (
                 <button
-                  onClick={() => removeEvent(modalState.time, modalState.day)}
+                  onClick={() => modalState.id && removeEvent(modalState.id)}
                   className="px-4 py-2 bg-red-500 text-white rounded"
                 >
                   Delete
                 </button>
               )}
-              <button
-                onClick={saveEvent}
-                className="px-4 py-2 bg-[#3d312e] text-[#f0eeee] rounded"
-              >
+              <button onClick={saveEvent} className="px-4 py-2 bg-[#3d312e] text-[#f0eeee] rounded">
                 {modalState.isEditing ? "Update" : "Add"}
               </button>
             </div>

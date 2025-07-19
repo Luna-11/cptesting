@@ -1,97 +1,143 @@
-// src/app/api/timetable/route.ts
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { db } from "@script/db"
+import type { ResultSetHeader, RowDataPacket } from "mysql2"
+
+const ALL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const
+type Day = (typeof ALL_DAYS)[number]
+
+interface TimetableRow extends RowDataPacket {
+  tt_id: number
+  user_id: number
+  day: Day
+  time: string
+  task_name: string
+  color: string
+}
 
 export async function POST(req: Request) {
   try {
-    // Get cookies - must await the cookies() function
-    const cookieStore = await cookies() // Add await here
-    const userIdCookie = cookieStore.get('userId') // Now this will work
-    
-    if (!userIdCookie?.value) {
-      return NextResponse.json(
-        { error: "Unauthorized - Please log in" },
-        { status: 401 }
-      )
+    const cookieStore = await cookies()
+    const userId = cookieStore.get("userId")?.value
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized - Please log in" }, { status: 401 })
     }
-
-    const userId = userIdCookie.value
 
     const body = await req.json()
-    const { date, time, task_name } = body
-
-    if (!date || !time || !task_name) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      )
+    const { day, time, task_name, color } = body
+    if (!day || !time || !task_name || !color) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    const formattedDate = new Date(date).toISOString().split('T')[0]
+    if (!ALL_DAYS.includes(day)) {
+      return NextResponse.json({ error: "Invalid day provided" }, { status: 400 })
+    }
 
-    const [result] = await db.execute(
-      "INSERT INTO timetable (user_id, date, time, task_name) VALUES (?, ?, ?, ?)",
-      [userId, formattedDate, time, task_name]
+    // Check for existing event with proper typing
+    const [existing] = await db.execute<TimetableRow[]>(
+      "SELECT tt_id FROM timetable WHERE user_id = ? AND day = ? AND time = ?",
+      [userId, day, time]
     )
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Timetable entry added successfully",
-      result 
-    })
+    if (Array.isArray(existing) && existing.length > 0) {
+      const existingEvent = existing[0]
+      const [result] = await db.execute<ResultSetHeader>(
+        "UPDATE timetable SET task_name = ?, color = ? WHERE tt_id = ? AND user_id = ?",
+        [task_name, color, existingEvent.tt_id, userId]
+      )
 
-  } catch (error: any) {
-    console.error("Error inserting timetable:", error)
-    
-    if (error.code === 'ER_NO_REFERENCED_ROW_2') {
-      return NextResponse.json(
-        { 
-          error: "User not found",
-          message: "The logged-in user doesn't exist in the database"
+      return NextResponse.json({
+        success: true,
+        message: "Timetable entry updated successfully",
+        data: {
+          id: existingEvent.tt_id,
+          day,
+          time,
+          event: task_name,
+          color,
         },
-        { status: 404 }
+      })
+    } else {
+      const [result] = await db.execute<ResultSetHeader>(
+        "INSERT INTO timetable (user_id, day, time, task_name, color) VALUES (?, ?, ?, ?, ?)",
+        [userId, day, time, task_name, color]
       )
-    }
 
-    return NextResponse.json(
-      { 
-        error: "Database error",
-        message: error.message 
-      },
-      { status: 500 }
-    )
+      return NextResponse.json({
+        success: true,
+        message: "Timetable entry added successfully",
+        data: {
+          id: result.insertId,
+          day,
+          time,
+          event: task_name,
+          color,
+        },
+      })
+    }
+  } catch (error: any) {
+    console.error("Error in timetable operation:", error)
+    return NextResponse.json({ error: "Database error", message: error.message }, { status: 500 })
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    // Also await cookies() in GET method
     const cookieStore = await cookies()
-    const userId = cookieStore.get('userId')?.value
-    
+    const userId = cookieStore.get("userId")?.value
     if (!userId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: "Unauthorized - Please log in" }, { status: 401 })
     }
 
-    const [rows] = await db.execute(
-      "SELECT date, time, task_name FROM timetable WHERE user_id = ? ORDER BY date, time",
+    const [rows] = await db.execute<TimetableRow[]>(
+      `SELECT tt_id AS id, day, time, task_name AS event, color
+       FROM timetable
+       WHERE user_id = ?
+       ORDER BY 
+         CASE day
+           WHEN 'Sunday' THEN 0
+           WHEN 'Monday' THEN 1
+           WHEN 'Tuesday' THEN 2
+           WHEN 'Wednesday' THEN 3
+           WHEN 'Thursday' THEN 4
+           WHEN 'Friday' THEN 5
+           WHEN 'Saturday' THEN 6
+         END,
+       time`,
       [userId]
     )
 
-    return NextResponse.json({ 
-      success: true,
-      data: rows 
-    })
+    return NextResponse.json(rows)
+  } catch (error) {
+    console.error("GET /api/timetable error:", error)
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+  }
+}
 
-  } catch (error: any) {
-    console.error("Database error:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch timetable" },
-      { status: 500 }
+export async function DELETE(req: Request) {
+  try {
+    const cookieStore = await cookies()
+    const userId = cookieStore.get("userId")?.value
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { id } = await req.json()
+    if (!id) {
+      return NextResponse.json({ error: "Missing event ID" }, { status: 400 })
+    }
+
+    const [result] = await db.execute<ResultSetHeader>(
+      "DELETE FROM timetable WHERE tt_id = ? AND user_id = ?",
+      [id, userId]
     )
+
+    return NextResponse.json({
+      success: true,
+      message: "Event deleted successfully",
+    })
+  } catch (error: any) {
+    console.error("Error deleting event:", error)
+    return NextResponse.json({ error: "Failed to delete event" }, { status: 500 })
   }
 }

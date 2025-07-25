@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import mysql from 'mysql2/promise';
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const { username, password } = await req.json();
+    const { username, password } = await request.json();
 
     if (!username?.trim() || !password) {
       return NextResponse.json(

@@ -1,126 +1,99 @@
-// src/app/api/todo/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { db } from '@script/db';
+import { cookies } from 'next/headers';
+
+export async function GET() {
+  try {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+    
+    console.log('User ID from cookies:', userId); // Add this line
+    
+    if (!userId) {
+      console.log('No user ID found - unauthorized'); // Add this line
+      return NextResponse.json(
+        { error: 'Unauthorized - Please log in' },
+        { status: 401 }
+      );
+    }
+
+    const [tasks] = await db.query(`
+      SELECT 
+        task_id,
+        user_id,
+        task_name,
+        status,
+        completed_at,
+        important,
+        created_at
+      FROM todo_tasks
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+    `, [userId]);
+    
+    console.log('Tasks from database:', tasks); // Add this line
+    
+    return NextResponse.json(tasks);
+  } catch (error) {
+    console.error('Database error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch tasks' },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: Request) {
-  console.log('[POST] /api/todo request received');
-  let connection;
-  
   try {
-    // 1. Verify request is received
-    console.log('1. Parsing request body...');
-    const body = await request.json();
-    console.log('Request body:', JSON.stringify(body, null, 2));
-
-    // 2. Validate required fields
-    const { user_id, task_name } = body;
-    if (!user_id || !task_name) {
-      console.error('Validation failed - missing required fields');
+    const cookieStore =await cookies();
+    const userId = cookieStore.get('userId')?.value;
+    
+    if (!userId) {
       return NextResponse.json(
-        { error: 'user_id and task_name are required' },
+        { error: 'Unauthorized - Please log in' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { task_name } = body;
+
+    if (!task_name) {
+      return NextResponse.json(
+        { error: 'task_name is required' },
         { status: 400 }
       );
     }
 
-    // 3. Get database connection
-    console.log('2. Getting database connection...');
-    connection = await db.getConnection();
-    console.log('Database connection established');
+    const [result] = await db.query(
+      `INSERT INTO todo_tasks 
+       (user_id, task_name, status, important, created_at) 
+       VALUES (?, ?, 'toStart', false, NOW())`,
+      [userId, task_name]
+    );
 
-    // 4. Begin transaction
-    console.log('3. Starting transaction...');
-    await connection.beginTransaction();
-
-    // 5. Prepare insert query
-    const insertQuery = `
-      INSERT INTO todo_list (
-        user_id, 
-        task_name, 
-        status, 
-        subject_id, 
+    const [newTask] = await db.query(
+      `SELECT 
+        task_id,
+        user_id,
+        task_name,
+        status,
+        completed_at,
         important,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, NOW())
-    `;
-    const insertParams = [
-      user_id,
-      task_name,
-      body.status || 'toStart',
-      body.subject_id || null,
-      body.important ? 1 : 0
-    ];
-
-    console.log('4. Executing query:', insertQuery);
-    console.log('With parameters:', insertParams);
-
-    // 6. Execute insert
-    const [insertResult] = await connection.query(insertQuery, insertParams);
-    console.log('5. Insert result:', insertResult);
-
-    // 7. Verify insertion
-    if ((insertResult as any).affectedRows !== 1) {
-      console.error('Insertion failed - no rows affected');
-      await connection.rollback();
-      return NextResponse.json(
-        { error: 'Failed to insert task' },
-        { status: 500 }
-      );
-    }
-
-    // 8. Fetch the inserted record
-    console.log('6. Fetching inserted record...');
-    const [newTask] = await connection.query(
-      'SELECT * FROM todo_tasks WHERE task_id = ?',
-      [(insertResult as any).insertId]
+       FROM todo_tasks WHERE task_id = ?`,
+      [(result as any).insertId]
     );
-    console.log('New task:', newTask);
-
-    // 9. Commit transaction
-    await connection.commit();
-    console.log('7. Transaction committed successfully');
 
     return NextResponse.json(
-      { success: true, data: (newTask as any[])[0] },
+      { data: (newTask as any[])[0] },
       { status: 201 }
     );
-
-  } catch (error: any) {
-    console.error('8. ERROR:', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code,
-      errno: error.errno,
-      sqlState: error.sqlState,
-      sqlMessage: error.sqlMessage
-    });
-
-    if (connection) {
-      try {
-        await connection.rollback();
-        console.log('Transaction rolled back');
-      } catch (rollbackError) {
-        console.error('Rollback failed:', rollbackError);
-      }
-    }
-
+  } catch (error) {
+    console.error('Database error:', error);
     return NextResponse.json(
-      { 
-        error: 'Database operation failed',
-        details: process.env.NODE_ENV === 'development' ? {
-          message: error.message,
-          code: error.code
-        } : undefined
-      },
+      { error: 'Failed to create task' },
       { status: 500 }
     );
-  } finally {
-    if (connection) {
-      try {
-        connection.release();
-        console.log('Connection released');
-      } catch (releaseError) {
-        console.error('Connection release failed:', releaseError);
-      }
-    }
   }
 }

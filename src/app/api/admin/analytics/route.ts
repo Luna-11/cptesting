@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@script/db';
 
-// Enhanced cookie validation for admin
 function validateAdminAuth(request: NextRequest) {
   const loggedIn = request.cookies.get('loggedIn')?.value;
   const userId = request.cookies.get('userId')?.value;
@@ -10,33 +9,23 @@ function validateAdminAuth(request: NextRequest) {
   if (!loggedIn || loggedIn !== 'true' || !userId || role !== 'admin') {
     throw new Error('Unauthorized - Admin access required');
   }
-
   return { userId, role };
 }
 
-// GET analytics data (admin only)
 export async function GET(request: NextRequest) {
   try {
     validateAdminAuth(request);
     
-<<<<<<< HEAD
-    // Get user statistics
-=======
-    // Get comprehensive user statistics
->>>>>>> 7cf14054d4f0b8f98280e88a62b3a6ad96cf2201
+    // Get comprehensive user statistics - updated to use registration_date instead of created_at
     const [userStats] = await db.query(`
       SELECT 
         COUNT(*) as total_users,
         COUNT(CASE WHEN role_id = 1 THEN 1 END) as admin_users,
         COUNT(CASE WHEN role_id = 2 THEN 1 END) as regular_users,
         COUNT(CASE WHEN role_id = 3 THEN 1 END) as pro_users,
-        COUNT(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as new_users_30d,
-<<<<<<< HEAD
-        COUNT(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as new_users_7d
-=======
-        COUNT(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as new_users_7d,
-        COUNT(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 1 END) as new_users_1d
->>>>>>> 7cf14054d4f0b8f98280e88a62b3a6ad96cf2201
+        COUNT(CASE WHEN registration_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as new_users_30d,
+        COUNT(CASE WHEN registration_date >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as new_users_7d,
+        COUNT(CASE WHEN registration_date >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 1 END) as new_users_1d
       FROM user
     `);
 
@@ -48,22 +37,15 @@ export async function GET(request: NextRequest) {
         COUNT(DISTINCT t.user_id) as users_with_tasks,
         COUNT(t.task_id) as total_tasks,
         COUNT(CASE WHEN c.event_date >= CURDATE() - INTERVAL 7 DAY THEN 1 END) as events_last_week,
-<<<<<<< HEAD
-        COUNT(CASE WHEN t.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as tasks_last_week
-=======
         COUNT(CASE WHEN t.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as tasks_last_week,
         COUNT(CASE WHEN c.event_date >= CURDATE() - INTERVAL 1 DAY THEN 1 END) as events_today,
         COUNT(CASE WHEN t.created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 1 END) as tasks_today
->>>>>>> 7cf14054d4f0b8f98280e88a62b3a6ad96cf2201
       FROM user u
       LEFT JOIN calendar c ON u.user_id = c.user_id
       LEFT JOIN todo_tasks t ON u.user_id = t.user_id
     `);
 
-<<<<<<< HEAD
-    // Get recent activity
-=======
-    // Get engagement metrics
+    // Get engagement metrics - updated to use registration_date
     const [engagementStats] = await db.query(`
       SELECT 
         COUNT(DISTINCT CASE 
@@ -88,20 +70,14 @@ export async function GET(request: NextRequest) {
     `);
 
     // Get recent activity (last 20 activities)
->>>>>>> 7cf14054d4f0b8f98280e88a62b3a6ad96cf2201
     const [recentActivity] = await db.query(`
       SELECT 
         'event' as type,
         u.name as user_name,
-<<<<<<< HEAD
-        c.event_name as activity,
-        c.event_date as timestamp
-=======
         u.email as user_email,
         c.event_name as activity,
         c.event_date as timestamp,
         'calendar' as category
->>>>>>> 7cf14054d4f0b8f98280e88a62b3a6ad96cf2201
       FROM calendar c
       JOIN user u ON c.user_id = u.user_id
       WHERE c.event_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
@@ -111,15 +87,10 @@ export async function GET(request: NextRequest) {
       SELECT 
         'task' as type,
         u.name as user_name,
-<<<<<<< HEAD
-        t.task_name as activity,
-        t.created_at as timestamp
-=======
         u.email as user_email,
         t.task_name as activity,
         t.created_at as timestamp,
         t.status as category
->>>>>>> 7cf14054d4f0b8f98280e88a62b3a6ad96cf2201
       FROM todo_tasks t
       JOIN user u ON t.user_id = u.user_id
       WHERE t.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
@@ -128,62 +99,39 @@ export async function GET(request: NextRequest) {
       LIMIT 20
     `);
 
-<<<<<<< HEAD
-    // Get user engagement data
-    const [engagementData] = await db.query(`
-=======
-    // Get user growth data (last 30 days)
+    // Get user growth data (last 30 days) - updated to use registration_date
     const [growthData] = await db.query(`
       SELECT 
-        DATE(created_at) as date,
+        DATE(registration_date) as date,
         COUNT(*) as new_users,
         COUNT(CASE WHEN role_id = 3 THEN 1 END) as new_pro_users
       FROM user 
-      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-      GROUP BY DATE(created_at)
+      WHERE registration_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      GROUP BY DATE(registration_date)
       ORDER BY date ASC
     `);
 
-    // Get top active users
+    // Get top active users - updated to use registration_date
     const [topUsers] = await db.query(`
->>>>>>> 7cf14054d4f0b8f98280e88a62b3a6ad96cf2201
       SELECT 
         u.user_id,
         u.name,
         u.email,
-<<<<<<< HEAD
-        u.created_at,
-        COUNT(DISTINCT c.event_id) as total_events,
-        COUNT(DISTINCT t.task_id) as total_tasks,
-        MAX(c.event_date) as last_event_date,
-        MAX(t.created_at) as last_task_date
-=======
         u.role_id,
         COUNT(DISTINCT c.event_id) as total_events,
         COUNT(DISTINCT t.task_id) as total_tasks,
         (COUNT(DISTINCT c.event_id) + COUNT(DISTINCT t.task_id)) as activity_score,
         MAX(GREATEST(IFNULL(c.event_date, '1970-01-01'), IFNULL(t.created_at, '1970-01-01'))) as last_activity
->>>>>>> 7cf14054d4f0b8f98280e88a62b3a6ad96cf2201
       FROM user u
       LEFT JOIN calendar c ON u.user_id = c.user_id
       LEFT JOIN todo_tasks t ON u.user_id = t.user_id
       GROUP BY u.user_id
-<<<<<<< HEAD
-      ORDER BY (COUNT(DISTINCT c.event_id) + COUNT(DISTINCT t.task_id)) DESC
-    `);
-
-    const analytics = {
-      userStats: Array.isArray(userStats) ? userStats[0] : userStats,
-      activityStats: Array.isArray(activityStats) ? activityStats[0] : activityStats,
-      recentActivity: Array.isArray(recentActivity) ? recentActivity : [],
-      engagementData: Array.isArray(engagementData) ? engagementData : []
-=======
       HAVING activity_score > 0
       ORDER BY activity_score DESC, last_activity DESC
       LIMIT 10
     `);
 
-    // Calculate subscription metrics (assuming role_id 3 = pro users)
+    // Calculate subscription metrics
     const totalUsers = (userStats as any[])[0]?.total_users || 0;
     const proUsers = (userStats as any[])[0]?.pro_users || 0;
     const conversionRate = totalUsers > 0 ? (proUsers / totalUsers * 100) : 0;
@@ -201,7 +149,6 @@ export async function GET(request: NextRequest) {
       growthData: Array.isArray(growthData) ? growthData : [],
       topUsers: Array.isArray(topUsers) ? topUsers : [],
       generatedAt: new Date().toISOString()
->>>>>>> 7cf14054d4f0b8f98280e88a62b3a6ad96cf2201
     };
     
     return NextResponse.json(analytics);
@@ -211,7 +158,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Failed to fetch analytics',
-        details: error.message
+        details: error.message,
+        ...(process.env.NODE_ENV === 'development' && {
+          sqlError: error.code,
+          sqlMessage: error.sqlMessage
+        })
       },
       { status: error.message.includes('Unauthorized') ? 403 : 500 }
     );

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 
 // Define types for your data
@@ -7,6 +7,8 @@ type StudyDataItem = {
   day: string;
   hours: number;
   date: string;
+  start?: string;
+  end?: string;
 };
 
 type BreakDataItem = {
@@ -45,71 +47,6 @@ type SidebarProps = {
   setIsSidebarOpen: (isOpen: boolean) => void;
 };
 
-// Sample data for study and break hours
-const studyData: StudyDataItem[] = [
-  { day: "Monday", hours: 4, date: "2023-05-01" },
-  { day: "Tuesday", hours: 3, date: "2023-05-02" },
-  { day: "Wednesday", hours: 5, date: "2023-05-03" },
-  { day: "Thursday", hours: 2, date: "2023-05-04" },
-  { day: "Friday", hours: 6, date: "2023-05-05" },
-  { day: "Saturday", hours: 1, date: "2023-05-06" },
-  { day: "Sunday", hours: 3, date: "2023-05-07" },
-];
-
-const breakData: BreakDataItem[] = [
-  { name: "Dinner Break", value: 2 },
-  { name: "Short Break", value: 1 },
-  { name: "Exercise Break", value: 1 },
-  { name: "Coffee Break", value: 0.5 },
-];
-
-const overallData: OverallDataItem[] = [
-  { day: "Monday", study: 4, break: 2.5 },
-  { day: "Tuesday", study: 3, break: 1.5 },
-  { day: "Wednesday", study: 5, break: 1 },
-  { day: "Thursday", study: 2, break: 1 },
-  { day: "Friday", study: 6, break: 2 },
-  { day: "Saturday", study: 1, break: 0.5 },
-  { day: "Sunday", study: 3, break: 1 },
-];
-
-const dailyReportData: DailyReportDataItem[] = [
-  { day: "Monday", start: 8, end: 12 },
-  { day: "Tuesday", start: 9, end: 12 },
-  { day: "Wednesday", start: 10, end: 15 },
-  { day: "Thursday", start: 8, end: 10 },
-  { day: "Friday", start: 11, end: 17 },
-  { day: "Saturday", start: 7, end: 8 },
-  { day: "Sunday", start: 9, end: 12 },
-];
-
-const timelineData: StudySession[] = [
-  {
-    id: "1",
-    startTime: new Date(2025, 6, 10, 5, 0),
-    endTime: new Date(2025, 6, 10, 9, 2),
-    duration: 242, // 4h 2m
-    taskName: "Mathematics",
-    category: "Study"
-  },
-  {
-    id: "2",
-    startTime: new Date(2025, 6, 10, 9, 2),
-    endTime: new Date(2025, 6, 10, 9, 2),
-    duration: 0.13, // 8s
-    taskName: "Break",
-    category: "Work"
-  },
-  {
-    id: "3",
-    startTime: new Date(2025, 6, 10, 9, 2),
-    endTime: new Date(2025, 6, 10, 9, 2),
-    duration: 0.4, // 24s
-    taskName: "Quick Review",
-    category: "Study"
-  }
-];
-
 const COLORS = ["#DEB69C", "#722f37", "#C08baf", "#61463B"];
 
 const MiniCalendar = ({ studyData, onDayClick }: MiniCalendarProps) => {
@@ -135,33 +72,34 @@ const MiniCalendar = ({ studyData, onDayClick }: MiniCalendarProps) => {
     return dayData ? dayData.hours : 0;
   };
 
+  const getColorForStudyHours = (hours: number): string => {
+    if (hours === 0) return 'bg-white border border-gray-200';
+    if (hours < 3) return 'bg-[#f4e9e4]';      // Very light brown (0+)
+    if (hours < 5) return 'bg-[#d8b4a0]';      // Light brown (3+)
+    if (hours < 8) return 'bg-[#a87453]';      // Medium brown (5+)
+    return 'bg-[#5c4033] text-white';          // Dark brown (8+)
+  };
+
   const renderDays = () => {
     const totalDays = daysInMonth(currentMonth, currentYear);
     const firstDay = firstDayOfMonth(currentMonth, currentYear);
     const days = [];
 
-    // Empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       days.push(<div key={`empty-${i}`} className="w-8 h-8"></div>);
     }
 
-    // Cells for each day of the month
     for (let day = 1; day <= totalDays; day++) {
       const studyHours = getStudyHoursForDate(day);
-      const hasStudyHours = studyHours > 0;
-      
+      const colorClass = getColorForStudyHours(studyHours);
+
       days.push(
         <div 
           key={`day-${day}`}
           onClick={() => onDayClick(day)}
-          className={`w-8 h-8 flex flex-col items-center justify-center rounded-full cursor-pointer text-sm
-            ${hasStudyHours ? 'bg-amber-100' : ''}
-            hover:bg-amber-50 transition-colors`}
+          className={`w-8 h-8 flex items-center justify-center rounded cursor-pointer text-sm hover:opacity-80 transition-all ${colorClass}`}
         >
-          <span>{day}</span>
-          {hasStudyHours && (
-            <span className="text-xs font-medium text-amber-800">{studyHours}h</span>
-          )}
+          {day}
         </div>
       );
     }
@@ -172,7 +110,7 @@ const MiniCalendar = ({ studyData, onDayClick }: MiniCalendarProps) => {
   const changeMonth = (increment: number) => {
     let newMonth = currentMonth + increment;
     let newYear = currentYear;
-    
+
     if (newMonth < 0) {
       newMonth = 11;
       newYear--;
@@ -180,13 +118,14 @@ const MiniCalendar = ({ studyData, onDayClick }: MiniCalendarProps) => {
       newMonth = 0;
       newYear++;
     }
-    
+
     setCurrentMonth(newMonth);
     setCurrentYear(newYear);
   };
 
   return (
     <div className="border p-4 rounded shadow-lg bg-white h-fit">
+      {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <button 
           onClick={() => changeMonth(-1)}
@@ -202,7 +141,8 @@ const MiniCalendar = ({ studyData, onDayClick }: MiniCalendarProps) => {
           &gt;
         </button>
       </div>
-      
+
+      {/* Weekday Headers */}
       <div className="grid grid-cols-7 gap-1 mb-2">
         {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
           <div key={day} className="text-center text-xs font-medium text-gray-500">
@@ -210,16 +150,22 @@ const MiniCalendar = ({ studyData, onDayClick }: MiniCalendarProps) => {
           </div>
         ))}
       </div>
-      
+
+      {/* Date Grid */}
       <div className="grid grid-cols-7 gap-1">
         {renderDays()}
       </div>
-      
-      <div className="mt-4 flex items-center justify-center">
-        <div className="flex items-center">
-          <div className="w-3 h-3 rounded-full bg-amber-100 mr-1"></div>
-          <span className="text-xs">Study day</span>
+
+      {/* Simplified Legend with Blocks */}
+      <div className="mt-4 flex flex-col items-center">
+        <div className="text-xs text-gray-600 mb-1">Less</div>
+        <div className="flex gap-1">
+          <div className="w-6 h-6 rounded bg-[#f4e9e4] flex items-center justify-center text-xs">0+</div>
+          <div className="w-6 h-6 rounded bg-[#d8b4a0] flex items-center justify-center text-xs">3+</div>
+          <div className="w-6 h-6 rounded bg-[#a87453] flex items-center justify-center text-xs">5+</div>
+          <div className="w-6 h-6 rounded bg-[#5c4033] flex items-center justify-center text-xs text-white">8+</div>
         </div>
+        <div className="text-xs text-gray-600 mt-1">More</div>
       </div>
     </div>
   );
@@ -235,30 +181,40 @@ const TimelineChart = ({ data }: { data: StudySession[] }) => {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formatTime = (date: string | Date) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
     <div className="border p-4 rounded shadow-lg bg-white">
       <h2 className="text-xl font-semibold mb-4">Study Session Timeline</h2>
       <div className="space-y-4">
-        {data.map((session) => (
-          <div key={session.id} className="border-b pb-4 last:border-b-0">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-medium">{session.taskName}</h3>
-                <p className="text-sm text-gray-500">{session.category}</p>
+        {data.map((session) => {
+          const startTime = typeof session.startTime === 'string' 
+            ? new Date(session.startTime) 
+            : session.startTime;
+          const endTime = typeof session.endTime === 'string' 
+            ? new Date(session.endTime) 
+            : session.endTime;
+
+          return (
+            <div key={session.id} className="border-b pb-4 last:border-b-0">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="font-medium">{session.taskName}</h3>
+                  <p className="text-sm text-gray-500">{session.category}</p>
+                </div>
+                <span className="text-sm font-medium bg-amber-100 px-2 py-1 rounded">
+                  {formatDuration(session.duration)}
+                </span>
               </div>
-              <span className="text-sm font-medium bg-amber-100 px-2 py-1 rounded">
-                {formatDuration(session.duration)}
-              </span>
+              <div className="mt-2 text-sm text-gray-600">
+                {formatTime(startTime)} ~ {formatTime(endTime)}
+              </div>
             </div>
-            <div className="mt-2 text-sm text-gray-600">
-              {formatTime(session.startTime)} ~ {formatTime(session.endTime)}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -283,16 +239,131 @@ const Navbar = () => {
 export default function UserReportPage() {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
-  
+  const [reportData, setReportData] = useState<{
+    studyData: StudyDataItem[];
+    breakData: BreakDataItem[];
+    overallData: OverallDataItem[];
+    timelineData: StudySession[];
+    calendarData: StudyDataItem[];
+  } | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchReportData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/reports');
+        if (!response.ok) {
+          throw new Error('Failed to fetch report data');
+        }
+        const data = await response.json();
+        setReportData(data.data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReportData();
+  }, []);
+
   const handleDayClick = (day: number) => {
     setSelectedDay(day);
   };
 
   const getStudyHoursForDate = (day: number): number => {
+    if (!reportData?.calendarData) return 0;
     const formattedDate = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const dayData = studyData.find((d: StudyDataItem) => d.date === formattedDate);
+    const dayData = reportData.calendarData.find((d: StudyDataItem) => d.date === formattedDate);
     return dayData ? dayData.hours : 0;
   };
+
+  // Fallback data if API fails or is loading
+  const studyData = reportData?.studyData || [
+    { day: "Monday", hours: 4, date: "2023-05-01" },
+    { day: "Tuesday", hours: 3, date: "2023-05-02" },
+    { day: "Wednesday", hours: 5, date: "2023-05-03" },
+    { day: "Thursday", hours: 2, date: "2023-05-04" },
+    { day: "Friday", hours: 6, date: "2023-05-05" },
+    { day: "Saturday", hours: 1, date: "2023-05-06" },
+    { day: "Sunday", hours: 3, date: "2023-05-07" },
+  ];
+
+  const breakData = reportData?.breakData || [
+    { name: "Dinner Break", value: 2 },
+    { name: "Short Break", value: 1 },
+    { name: "Exercise Break", value: 1 },
+    { name: "Coffee Break", value: 0.5 },
+  ];
+
+  const overallData = reportData?.overallData || [
+    { day: "Monday", study: 4, break: 2.5 },
+    { day: "Tuesday", study: 3, break: 1.5 },
+    { day: "Wednesday", study: 5, break: 1 },
+    { day: "Thursday", study: 2, break: 1 },
+    { day: "Friday", study: 6, break: 2 },
+    { day: "Saturday", study: 1, break: 0.5 },
+    { day: "Sunday", study: 3, break: 1 },
+  ];
+
+  const timelineData = reportData?.timelineData || [
+    {
+      id: "1",
+      startTime: new Date(2025, 6, 10, 5, 0),
+      endTime: new Date(2025, 6, 10, 9, 2),
+      duration: 242,
+      taskName: "Mathematics",
+      category: "Study"
+    },
+    {
+      id: "2",
+      startTime: new Date(2025, 6, 10, 9, 2),
+      endTime: new Date(2025, 6, 10, 9, 2),
+      duration: 0.13,
+      taskName: "Break",
+      category: "Work"
+    },
+    {
+      id: "3",
+      startTime: new Date(2025, 6, 10, 9, 2),
+      endTime: new Date(2025, 6, 10, 9, 2),
+      duration: 0.4,
+      taskName: "Quick Review",
+      category: "Study"
+    }
+  ];
+
+  const dailyReportData = reportData?.studyData.map(item => ({
+    day: item.day,
+    start: item.start ? parseInt(item.start.split(':')[0]) : 0,
+    end: item.end ? parseInt(item.end.split(':')[0]) : 0
+  })) || [
+    { day: "Monday", start: 8, end: 12 },
+    { day: "Tuesday", start: 9, end: 12 },
+    { day: "Wednesday", start: 10, end: 15 },
+    { day: "Thursday", start: 8, end: 10 },
+    { day: "Friday", start: 11, end: 17 },
+    { day: "Saturday", start: 7, end: 8 },
+    { day: "Sunday", start: 9, end: 12 },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex">
@@ -328,7 +399,15 @@ export default function UserReportPage() {
                 <h2 className="text-xl font-semibold mb-2">Break Hours (Types)</h2>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
-                    <Pie data={breakData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#82ca9d" label>
+                    <Pie 
+                      data={breakData} 
+                      dataKey="value" 
+                      nameKey="name" 
+                      cx="50%" 
+                      cy="50%" 
+                      outerRadius={80} 
+                      label
+                    >
                       {breakData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
@@ -373,7 +452,10 @@ export default function UserReportPage() {
 
           {/* Sticky Calendar on the right */}
           <div className="lg:w-80 lg:sticky lg:top-4 lg:self-start">
-            <MiniCalendar studyData={studyData} onDayClick={handleDayClick} />
+            <MiniCalendar 
+              studyData={reportData?.calendarData || []} 
+              onDayClick={handleDayClick} 
+            />
             {selectedDay && (
               <div className="mt-4 p-4 border rounded bg-white shadow">
                 <h3 className="font-semibold">Details for selected day</h3>

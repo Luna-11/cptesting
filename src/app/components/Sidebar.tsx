@@ -77,7 +77,7 @@ export default function Sidebar({
           <li className="mb-10 flex items-center">
             {userRole === 3 ? (
               <>
-                <LockClockIcon className="mr-4 text-white"/>
+                {/* <LockClockIcon className="mr-4 text-white"/> */}
                 <Link href="/focus" className="text-white hover:text-gray-400">Focus Session</Link>
               </>
             ) : (

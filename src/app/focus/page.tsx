@@ -6,6 +6,7 @@ export default function BackgroundImageTimer() {
   const [isRunning, setIsRunning] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
   const imageSources = [
     "/bg.jpg", 
     "/bg1.jpg", 
@@ -15,26 +16,35 @@ export default function BackgroundImageTimer() {
     "/bg5.jpg"
   ];
 
+  // Timer Effect
   useEffect(() => {
-
-    if (isRunning && time > 0) {
-      timerRef.current = setInterval(() => setTime((prev) => prev - 1), 1000);
-    } else if (time === 0) {
-      setIsRunning(false); // Auto-pause when timer reaches 0
+    if (isRunning) {
+      timerRef.current = setInterval(() => {
+        setTime((prevTime) => {
+          if (prevTime <= 1) {
+            clearInterval(timerRef.current!);
+            timerRef.current = null;
+            setIsRunning(false);
+            return 0;
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
     }
 
+    // Cleanup
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
     };
-  }, [isRunning, time]);
+  }, [isRunning]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "00")}`;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
   const changeBackground = () => {
@@ -61,7 +71,7 @@ export default function BackgroundImageTimer() {
         <div className="flex gap-2">
           <button
             className="px-4 py-2 button2 text-white rounded-lg"
-            onClick={() => setIsRunning(!isRunning)}
+            onClick={() => setIsRunning((prev) => !prev)}
           >
             {isRunning ? "Pause" : "Start"}
           </button>

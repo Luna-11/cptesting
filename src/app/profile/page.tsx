@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type NoteColor = 'white' | 'blue' | 'yellow' | 'green' | 'pink';
 
@@ -11,35 +11,49 @@ interface StudyNote {
   color: NoteColor;
 }
 
+// Default profile data
+const DEFAULT_PROFILE = {
+  username: "AlessiaTaulli",
+  bio: "Design is not just what it looks like, design is how it works.",
+  profileImage: "/p6.png",
+  bannerImage: "/bg.jpg",
+  intro: "Hi, I'm Alessia Taulli, a passionate graphic designer and illustrator based in Molfetta, Italy.",
+  description: "With over 5 years of experience in the design industry, I specialize in creating visually stunning illustrations and brand identities that tell compelling stories.",
+  bannerText: "The Sky tells me there are *No limits* and curiosity tells me to *Explore*",
+  occupation: "Graphic Designer & Illustrator"
+};
+
 export default function ProfilePage() {
-  // User data states
+  // State management
   const [activeTab, setActiveTab] = useState("about");
   const [isEditingPassword, setIsEditingPassword] = useState(false);
   const [isEditingAbout, setIsEditingAbout] = useState(false);
   const [isEditingPortfolio, setIsEditingPortfolio] = useState(false);
   const [isEditingBanner, setIsEditingBanner] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
   
-  // Form data states
+  // Form data states with default values
   const [formData, setFormData] = useState({
-    username: "AlessiaTaulli",
+    username: DEFAULT_PROFILE.username,
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
-    bio: "Design is not just what it looks like, design is how it works."
+    bio: DEFAULT_PROFILE.bio
   });
   
-  const [profileImage, setProfileImage] = useState("/p6.png");
+  const [profileImage, setProfileImage] = useState(DEFAULT_PROFILE.profileImage);
   const [aboutMe, setAboutMe] = useState({
-    intro: "Hi, I'm Alessia Taulli, a passionate graphic designer and illustrator based in Molfetta, Italy.",
-    description: "With over 5 years of experience in the design industry, I specialize in creating visually stunning illustrations and brand identities that tell compelling stories."
+    intro: DEFAULT_PROFILE.intro,
+    description: DEFAULT_PROFILE.description
   });
   
   const [bannerData, setBannerData] = useState({
-    image: "/bg.jpg",
-    text: "The Sky tells me there are *No limits* and curiosity tells me to *Explore*"
+    image: DEFAULT_PROFILE.bannerImage,
+    text: DEFAULT_PROFILE.bannerText
   });
 
-  // Study notes state (read-only)
+  // Static study notes data
   const [studyNotes] = useState<StudyNote[]>([
     {
       id: 1,
@@ -65,8 +79,6 @@ export default function ProfilePage() {
   ]);
 
   const [selectedNote, setSelectedNote] = useState<StudyNote | null>(null);
-
-  // Mock study streak data
   const [studyStreaks] = useState([
     { date: "2025-07-01", hours: 2 },
     { date: "2025-07-02", hours: 1 },
@@ -80,6 +92,49 @@ export default function ProfilePage() {
     { date: "2025-07-10", hours: 3 },
     { date: "2025-07-27", hours: 4 },
   ]);
+
+  // Fetch profile data
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        const response = await fetch('/api/profile', {
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Update state with fetched data or keep defaults
+        setFormData(prev => ({
+          ...prev,
+          username: data.user?.username || DEFAULT_PROFILE.username,
+          bio: data.profile?.bio || DEFAULT_PROFILE.bio
+        }));
+        
+        setProfileImage(data.profile?.profileImage || DEFAULT_PROFILE.profileImage);
+        
+        setAboutMe({
+          intro: data.profile?.intro || DEFAULT_PROFILE.intro,
+          description: data.profile?.description || DEFAULT_PROFILE.description
+        });
+        
+        setBannerData({
+          image: data.profile?.bannerImage || DEFAULT_PROFILE.bannerImage,
+          text: data.profile?.bannerText || DEFAULT_PROFILE.bannerText
+        });
+        
+      } catch (error) {
+        console.error("Fetch error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProfileData();
+  }, []);
 
   // Handlers
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,29 +176,134 @@ export default function ProfilePage() {
     }
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Password changed successfully!");
-    setIsEditingPassword(false);
-    setFormData(prev => ({...prev, currentPassword: "", newPassword: "", confirmPassword: ""}));
+    
+    if (formData.newPassword !== formData.confirmPassword) {
+      alert("New passwords don't match!");
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: formData.currentPassword,
+          newPassword: formData.newPassword
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update password');
+      }
+      
+      alert("Password changed successfully!");
+      setIsEditingPassword(false);
+      setFormData(prev => ({
+        ...prev, 
+        currentPassword: "", 
+        newPassword: "", 
+        confirmPassword: ""
+      }));
+    } catch (error: any) {
+      console.error('Error updating password:', error);
+      alert(error.message || "Failed to update password");
+    }
   };
 
-  const handleAboutSubmit = (e: React.FormEvent) => {
+  const handleAboutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert("About section updated!");
-    setIsEditingAbout(false);
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          profileImage,
+          bannerImage: bannerData.image,
+          bio: formData.bio,
+          intro: aboutMe.intro,
+          description: aboutMe.description,
+          bannerText: bannerData.text,
+          occupation: DEFAULT_PROFILE.occupation
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to update profile');
+      
+      alert("About section updated!");
+      setIsEditingAbout(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert("Failed to update profile");
+    }
   };
 
-  const handlePortfolioSubmit = (e: React.FormEvent) => {
+  const handlePortfolioSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Profile details updated!");
-    setIsEditingPortfolio(false);
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          profileImage,
+          bannerImage: bannerData.image,
+          bio: formData.bio,
+          intro: aboutMe.intro,
+          description: aboutMe.description,
+          bannerText: bannerData.text,
+          occupation: DEFAULT_PROFILE.occupation
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to update profile');
+      
+      alert("Profile details updated!");
+      setIsEditingPortfolio(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert("Failed to update profile");
+    }
   };
 
-  const handleBannerSubmit = (e: React.FormEvent) => {
+  const handleBannerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsEditingBanner(false);
-    alert("Banner updated successfully!");
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          profileImage,
+          bannerImage: bannerData.image,
+          bio: formData.bio,
+          intro: aboutMe.intro,
+          description: aboutMe.description,
+          bannerText: bannerData.text,
+          occupation: DEFAULT_PROFILE.occupation
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to update profile');
+      
+      setIsEditingBanner(false);
+      alert("Banner updated successfully!");
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert("Failed to update profile");
+    }
   };
 
   // Study Streak Calendar Component
@@ -276,8 +436,7 @@ export default function ProfilePage() {
         ...prev,
         text: editText
       }));
-      setIsEditingBanner(false);
-      alert("Banner updated successfully!");
+      handleBannerSubmit(e);
     };
 
     return (
@@ -670,8 +829,19 @@ export default function ProfilePage() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#f0eeee] items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#3d312e]"></div>
+        <p className="mt-4 text-[#3d312e]">Loading profile...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-[#f0eeee]">
+
+
       {/* All Modals */}
       {isEditingBanner && <BannerEditModal />}
       {isEditingPassword && <PasswordEditModal />}

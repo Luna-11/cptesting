@@ -1,364 +1,193 @@
+// app/api/admin/users/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@script/db';
-import bcrypt from 'bcrypt';
+import type { RowDataPacket } from 'mysql2';
+import type { ResultSetHeader } from 'mysql2';
 
-function validateAdminAuth(request: NextRequest) {
-  const loggedIn = request.cookies.get('loggedIn')?.value;
-  const userId = request.cookies.get('userId')?.value;
-  const role = request.cookies.get('role')?.value;
-
-  if (!loggedIn || loggedIn !== 'true' || !userId || role !== 'admin') {
-    throw new Error('Unauthorized - Admin access required');
-  }
-  return { userId, role };
+interface UserRow extends RowDataPacket {
+  user_id: number;
+  name: string;
+  email: string;
+  password: string;
+  goal: number | null;
+  studyLevel: string | null;
+  role_id: number;
+}
+interface UpdateUserRequest {
+  userId: number;
+  role?: 'user' | 'pro' | 'admin';
+  status?: 'active' | 'inactive' | 'dormant';
 }
 
 export async function GET(request: NextRequest) {
   try {
-    validateAdminAuth(request);
-    
+    // Validate admin auth
+    const loggedIn = request.cookies.get('loggedIn')?.value;
+    const userId = request.cookies.get('userId')?.value;
+    const role = request.cookies.get('role')?.value;
+
+    if (!loggedIn || loggedIn !== 'true' || !userId || role !== 'admin') {
+      throw new Error('Unauthorized - Admin access required');
+    }
+
     const { searchParams } = new URL(request.url);
-    const analytics = searchParams.get('analytics');
-    
-    if (analytics === 'true') {
-      // Analytics data request
-      const [userStats] = await db.query(`
-        SELECT 
-          COUNT(*) as total_users,
-          COUNT(CASE WHEN role_id = 1 THEN 1 END) as admin_users,
-          COUNT(CASE WHEN role_id = 2 THEN 1 END) as regular_users,
-          COUNT(CASE WHEN role_id = 3 THEN 1 END) as pro_users
-        FROM user
-      `);
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10')));
+    const offset = (page - 1) * limit;
+    const search = searchParams.get('search') || '';
 
-      const [activityStats] = await db.query(`
-        SELECT 
-          COUNT(DISTINCT c.user_id) as users_with_events,
-          COUNT(c.event_id) as total_events,
-          COUNT(DISTINCT t.user_id) as users_with_tasks,
-          COUNT(t.task_id) as total_tasks
-        FROM user u
-        LEFT JOIN calendar c ON u.user_id = c.user_id
-        LEFT JOIN todo_tasks t ON u.user_id = t.user_id
-      `);
+    // Get total count
+    const [countRows] = await db.query<RowDataPacket[]>(
+      `SELECT COUNT(*) as count FROM user WHERE role_id != 1`
+    );
+    const total = countRows[0]?.count || 0;
 
-      const [engagementStats] = await db.query(`
-        SELECT 
-          COUNT(DISTINCT CASE 
-            WHEN c.event_date >= DATE_SUB(NOW(), INTERVAL 7 DAY) 
-              OR t.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            THEN u.user_id 
-          END) as weekly_active_users
-        FROM user u
-        LEFT JOIN calendar c ON u.user_id = c.user_id
-        LEFT JOIN todo_tasks t ON u.user_id = t.user_id
-      `);
+    // Get paginated users - removed created_at from SELECT
+    const [userRows] = await db.query<UserRow[]>(
+      `SELECT 
+        user_id, 
+        name, 
+        email, 
+        role_id, 
+        goal, 
+        studyLevel
+       FROM user
+       WHERE role_id != 1
+       ${search ? `AND (name LIKE ? OR email LIKE ?)` : ''}
+       ORDER BY user_id DESC
+       LIMIT ? OFFSET ?`,
+      search ? [`%${search}%`, `%${search}%`, limit, offset] : [limit, offset]
+    );
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          userStats: Array.isArray(userStats) ? userStats[0] : {},
-          activityStats: Array.isArray(activityStats) ? activityStats[0] : {},
-          engagementStats: Array.isArray(engagementStats) ? engagementStats[0] : {},
-          generatedAt: new Date().toISOString()
-        }
-      });
-    } else {
-      // Regular users list request
-      const search = searchParams.get('search') || '';
-      const roleFilter = searchParams.get('role') || 'all';
-      const page = parseInt(searchParams.get('page') || '1');
-      const limit = parseInt(searchParams.get('limit') || '10');
-      const offset = (page - 1) * limit;
+    // Transform data - using current date for join_date since created_at isn't available
+    const users = userRows.map(user => ({
+      user_id: user.user_id,
+      name: user.name,
+      email: user.email,
+      role: user.role_id === 3 ? 'pro' : 'user',
+      role_id: user.role_id,
+      status: 'active',
+      last_event_date: '',
+      last_task_date: '',
+      total_events: 0,
+      total_tasks: 0,
+      study_level: user.studyLevel || '',
+      daily_study_goal: user.goal || 0
+    }));
 
-      let whereClause = 'WHERE 1=1';
-      const queryParams: any[] = [];
-
-      if (search) {
-        whereClause += ' AND (u.name LIKE ? OR u.email LIKE ?)';
-        queryParams.push(`%${search}%`, `%${search}%`);
-      }
-
-      if (roleFilter !== 'all') {
-        whereClause += ' AND u.role_id = ?';
-        if (roleFilter === 'admin') {
-          queryParams.push(1);
-        } else if (roleFilter === 'pro') {
-          queryParams.push(3);
-        } else {
-          queryParams.push(2);
+    return NextResponse.json({
+      status: 'success',
+      data: {
+        users,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasPrev: page > 1,
+          hasNext: page < Math.ceil(total / limit)
         }
       }
-
-      const [users] = await db.query(`
-        SELECT 
-          u.user_id,
-          u.name,
-          u.email,
-          u.role_id,
-          u.goal,
-          u.studyLevel
-        FROM user u
-        ${whereClause}
-        ORDER BY u.user_id DESC
-        LIMIT ? OFFSET ?
-      `, [...queryParams, limit, offset]);
-
-      const [countResult] = await db.query(`
-        SELECT COUNT(*) as total
-        FROM user u
-        ${whereClause}
-      `, queryParams);
-
-      const total = Array.isArray(countResult) ? countResult[0]?.total || 0 : 0;
-      const totalPages = Math.ceil(total / limit);
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          users: Array.isArray(users) ? users : [],
-          pagination: {
-            page,
-            limit,
-            total,
-            totalPages,
-            hasNext: page < totalPages,
-            hasPrev: page > 1
-          }
-        }
-      });
-    }
-  } catch (error: any) {
-    console.error('GET error:', error);
-    return NextResponse.json(
-      { 
-        success: false,
-        error: error.message,
-        ...(process.env.NODE_ENV === 'development' && {
-          stack: error.stack
-        })
-      },
-      { status: error.message.includes('Unauthorized') ? 403 : 500 }
-    );
-  }
-}
-
-// POST, PUT, DELETE handlers remain the same as previous implementation
-
-// POST create new user (admin only)
-export async function POST(request: NextRequest) {
-  try {
-    validateAdminAuth(request);
-    const body = await request.json();
-    
-    const { name, email, password, role_id, studyLevel, goal } = body;
-    
-    // Validate required fields
-    if (!name || !email || !password) {
-      return NextResponse.json(
-        { error: 'Name, email, and password are required' },
-        { status: 400 }
-      );
-    }
-
-    // Check if email already exists
-    const [existingUser] = await db.query(
-      'SELECT user_id FROM user WHERE email = ?',
-      [email]
-    );
-
-    if ((existingUser as any[]).length > 0) {
-      return NextResponse.json(
-        { error: 'Email already exists' },
-        { status: 400 }
-      );
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Insert new user
-    const [result]: any = await db.query(
-      `INSERT INTO user (name, email, password, role_id, studyLevel, goal) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [name, email, hashedPassword, role_id || 2, studyLevel || null, goal || null]
-    );
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'User created successfully',
-      userId: result.insertId 
     });
 
   } catch (error: any) {
-    console.error('POST user error:', error);
+    console.error('Error in GET /api/admin/users:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to create user',
-        details: error.message
+      {
+        status: 'error',
+        error: error.message || 'Failed to fetch users',
       },
       { status: error.message.includes('Unauthorized') ? 403 : 500 }
     );
   }
 }
 
-// PUT update user (admin only)
 export async function PUT(request: NextRequest) {
   try {
-    validateAdminAuth(request);
-    const body = await request.json();
-    
-    const { userId, name, email, role_id, studyLevel, goal, password } = body;
-    
-    if (!userId) {
+    // Validate admin auth
+    const loggedIn = request.cookies.get('loggedIn')?.value;
+    const userId = request.cookies.get('userId')?.value;
+    const role = request.cookies.get('role')?.value;
+
+    if (!loggedIn || loggedIn !== 'true' || !userId || role !== 'admin') {
       return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Check if user exists
-    const [existingUser] = await db.query(
-      'SELECT user_id FROM user WHERE user_id = ?',
-      [userId]
-    );
-
-    if ((existingUser as any[]).length === 0) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    // Build update query dynamically
-    const updateFields: string[] = [];
-    const updateValues: any[] = [];
-
-    if (name !== undefined) {
-      updateFields.push('name = ?');
-      updateValues.push(name);
-    }
-    if (email !== undefined) {
-      updateFields.push('email = ?');
-      updateValues.push(email);
-    }
-    if (role_id !== undefined) {
-      updateFields.push('role_id = ?');
-      updateValues.push(role_id);
-    }
-    if (studyLevel !== undefined) {
-      updateFields.push('studyLevel = ?');
-      updateValues.push(studyLevel);
-    }
-    if (goal !== undefined) {
-      updateFields.push('goal = ?');
-      updateValues.push(goal);
-    }
-    if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      updateFields.push('password = ?');
-      updateValues.push(hashedPassword);
-    }
-
-    if (updateFields.length === 0) {
-      return NextResponse.json(
-        { error: 'No fields to update' },
-        { status: 400 }
-      );
-    }
-
-    updateValues.push(userId);
-
-    const [result]: any = await db.query(
-      `UPDATE user SET ${updateFields.join(', ')} WHERE user_id = ?`,
-      updateValues
-    );
-
-    if (result.affectedRows === 0) {
-      return NextResponse.json(
-        { error: 'User not found or no changes made' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'User updated successfully' 
-    });
-
-  } catch (error: any) {
-    console.error('PUT user error:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to update user',
-        details: error.message
-      },
-      { status: error.message.includes('Unauthorized') ? 403 : 500 }
-    );
-  }
-}
-
-// DELETE user (admin only)
-export async function DELETE(request: NextRequest) {
-  try {
-    validateAdminAuth(request);
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Check if user exists
-    const [existingUser] = await db.query(
-      'SELECT user_id, role_id FROM user WHERE user_id = ?',
-      [userId]
-    );
-
-    if ((existingUser as any[]).length === 0) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    // Prevent deletion of admin users (optional safety check)
-    const user = (existingUser as any[])[0];
-    if (user.role_id === 1) {
-      return NextResponse.json(
-        { error: 'Cannot delete admin users' },
+        {
+          status: 'error',
+          error: 'Unauthorized - Admin access required',
+        },
         { status: 403 }
       );
     }
 
-    // Delete user and related data (cascade)
-    await db.query('DELETE FROM calendar WHERE user_id = ?', [userId]);
-    await db.query('DELETE FROM todo_tasks WHERE user_id = ?', [userId]);
-    const [result]: any = await db.query('DELETE FROM user WHERE user_id = ?', [userId]);
+    const body: UpdateUserRequest = await request.json();
+    const { userId: targetUserId, role: newRole, status } = body;
+
+    if (!targetUserId) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          error: 'User ID is required',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Prepare update fields
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    if (newRole) {
+      const roleId = newRole === 'admin' ? 1 : newRole === 'pro' ? 3 : 2;
+      updates.push('role_id = ?');
+      params.push(roleId);
+    }
+
+    if (status) {
+      updates.push('status = ?');
+      params.push(status);
+    }
+
+    if (updates.length === 0) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          error: 'No valid updates provided',
+        },
+        { status: 400 }
+      );
+    }
+
+    params.push(targetUserId);
+
+    // Update user
+    const [result] = await db.query<ResultSetHeader>(
+      `UPDATE user SET ${updates.join(', ')} WHERE user_id = ?`,
+      params
+    );
 
     if (result.affectedRows === 0) {
       return NextResponse.json(
-        { error: 'User not found' },
+        {
+          status: 'error',
+          error: 'User not found or no changes made',
+        },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'User deleted successfully' 
+    return NextResponse.json({
+      status: 'success',
+      message: 'User updated successfully',
     });
 
   } catch (error: any) {
-    console.error('DELETE user error:', error);
+    console.error('Error in PUT /api/admin/users:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to delete user',
-        details: error.message
+      {
+        status: 'error',
+        error: error.message || 'Failed to update user',
       },
-      { status: error.message.includes('Unauthorized') ? 403 : 500 }
+      { status: 500 }
     );
   }
 }

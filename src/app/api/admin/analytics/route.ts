@@ -16,20 +16,17 @@ export async function GET(request: NextRequest) {
   try {
     validateAdminAuth(request);
     
-    // Get comprehensive user statistics - updated to use registration_date instead of created_at
+    // Get basic user statistics (without time-based metrics)
     const [userStats] = await db.query(`
       SELECT 
         COUNT(*) as total_users,
         COUNT(CASE WHEN role_id = 1 THEN 1 END) as admin_users,
         COUNT(CASE WHEN role_id = 2 THEN 1 END) as regular_users,
-        COUNT(CASE WHEN role_id = 3 THEN 1 END) as pro_users,
-        COUNT(CASE WHEN registration_date >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as new_users_30d,
-        COUNT(CASE WHEN registration_date >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as new_users_7d,
-        COUNT(CASE WHEN registration_date >= DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 1 END) as new_users_1d
+        COUNT(CASE WHEN role_id = 3 THEN 1 END) as pro_users
       FROM user
     `);
 
-    // Get activity statistics
+    // Get activity statistics (using calendar and tasks dates only)
     const [activityStats] = await db.query(`
       SELECT 
         COUNT(DISTINCT c.user_id) as users_with_events,
@@ -45,7 +42,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN todo_tasks t ON u.user_id = t.user_id
     `);
 
-    // Get engagement metrics - updated to use registration_date
+    // Get engagement metrics (using activity dates only)
     const [engagementStats] = await db.query(`
       SELECT 
         COUNT(DISTINCT CASE 
@@ -99,19 +96,7 @@ export async function GET(request: NextRequest) {
       LIMIT 20
     `);
 
-    // Get user growth data (last 30 days) - updated to use registration_date
-    const [growthData] = await db.query(`
-      SELECT 
-        DATE(registration_date) as date,
-        COUNT(*) as new_users,
-        COUNT(CASE WHEN role_id = 3 THEN 1 END) as new_pro_users
-      FROM user 
-      WHERE registration_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-      GROUP BY DATE(registration_date)
-      ORDER BY date ASC
-    `);
-
-    // Get top active users - updated to use registration_date
+    // Get top active users (without registration date)
     const [topUsers] = await db.query(`
       SELECT 
         u.user_id,
@@ -146,7 +131,6 @@ export async function GET(request: NextRequest) {
       activityStats: Array.isArray(activityStats) ? activityStats[0] : activityStats,
       engagementStats: Array.isArray(engagementStats) ? engagementStats[0] : engagementStats,
       recentActivity: Array.isArray(recentActivity) ? recentActivity : [],
-      growthData: Array.isArray(growthData) ? growthData : [],
       topUsers: Array.isArray(topUsers) ? topUsers : [],
       generatedAt: new Date().toISOString()
     };

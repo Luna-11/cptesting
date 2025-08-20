@@ -1,55 +1,77 @@
 "use client";
+
 import { Work_Sans } from "next/font/google";
 import { ReactNode, useState } from "react";
-import Sidebar from "./components/Sidebar";
+import Sidebar, { UserRole } from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import { usePathname } from "next/navigation";
+import { SessionProvider, useSession } from "next-auth/react";
 import "./globals.css";
 
-// Font configuration moved outside the component
 const workSans = Work_Sans({ 
   subsets: ["latin"], 
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
   variable: '--font-work-sans'
 });
 
-export default function Layout({ children }: { children: ReactNode }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+function AuthWrapper({ children }: { children: ReactNode }) {
+  const { data: session } = useSession();
   const pathname = usePathname();
-  
-  // Improved auth route handling
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // routes where we don’t show sidebar/navbar
   const isAuthRoute = () => {
     const authRoutes = ['/register', '/logIn', '/admin'];
     return authRoutes.some(route => pathname?.startsWith(route));
   };
 
+  // safely determine role from session
+  const userRole = session?.user?.role
+    ? (Number(session.user.role) as UserRole)
+    : UserRole.BASIC;
+
+  return (
+    <>
+      {isAuthRoute() ? (
+        <main className="flex min-h-screen flex-col items-center justify-center">
+          {children}
+        </main>
+      ) : (
+        <div className="flex min-h-screen w-full">
+          {/* Sidebar gets role */}
+          <Sidebar 
+            isSidebarOpen={isSidebarOpen} 
+            setIsSidebarOpen={setIsSidebarOpen}
+            userRole={userRole}
+          />
+          
+          <div className="flex flex-1 flex-col">
+            {/* Navbar also gets role */}
+            <Navbar 
+              setIsSidebarOpen={setIsSidebarOpen}
+              userRole={userRole}
+            />
+            
+            <main className="flex flex-1 flex-col overflow-hidden">
+              {children}
+            </main>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+export default function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={workSans.variable}>
       <body className="min-h-screen bg-background font-sans antialiased">
-        {isAuthRoute() ? (
-          // Auth layout - simple centered container
-          <main className="flex min-h-screen flex-col items-center justify-center">
+        <SessionProvider>
+          <AuthWrapper>
             {children}
-          </main>
-        ) : (
-          // Main app layout with sidebar and navbar
-          <div className="flex min-h-screen w-full">
-            <Sidebar 
-              isSidebarOpen={isSidebarOpen} 
-              setIsSidebarOpen={setIsSidebarOpen} 
-            />
-            
-            <div className="flex flex-1 flex-col">
-              <Navbar setIsSidebarOpen={setIsSidebarOpen} />
-              
-              <main className="flex flex-1 flex-col overflow-hidden">
-                {children}
-              </main>
-            </div>
-          </div>
-        )}
+          </AuthWrapper>
+        </SessionProvider>
       </body>
     </html>
   );
-  
 }

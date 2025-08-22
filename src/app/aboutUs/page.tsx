@@ -15,7 +15,7 @@ export default function AboutUsPage() {
 
           <div className="slide-content">
             <div className="planet-image"><img src="/cat11.png" alt="cat image" /> </div>
-            <h1>HOW TO USE</h1>
+            <h1 className="slideOneh1">HOW TO USE</h1>
             <h2>STUDY-WITH-ME</h2>
             <p className="slide-description">This website is developed in order to help students to manage their time effectively and efficiently.</p>
             <p>Let's start to learn how to use this.</p>
@@ -25,7 +25,7 @@ export default function AboutUsPage() {
         {/* Slide 2: Getting Started */}
         <section className="slide bg-space-dark-1">
           <div className="slide-content">
-            <h1>How to use Calendar Page</h1>
+            <h1 className="slideOneh1">How to use Calendar Page</h1>
             
             <div className="content-grid">
               <div className="text-content">
@@ -48,7 +48,7 @@ export default function AboutUsPage() {
         {/* Slide 3: Key Features */}
         <section className="slide bg-space-dark-2">
           <div className="slide-content">
-            <h1>Study Session</h1>
+            <h1 className="slideOneh1">Study Session</h1>
             
             <div className="content-grid">
               <div className="planet-image"><img src="/cat4.png" alt="test image" /> </div>
@@ -69,7 +69,7 @@ export default function AboutUsPage() {
         {/* Slide 4: Study Rooms */}
         <section className="slide bg-space-dark-3">
           <div className="slide-content">
-            <h1>Timetable</h1>
+            <h1 className="slideOneh1">Timetable</h1>
             
             <div className="content-grid">
               <div className="text-content">
@@ -91,7 +91,7 @@ export default function AboutUsPage() {
         {/* Slide 5: Getting Started */}
         <section className="slide bg-space-dark-1">
           <div className="slide-content">
-            <h1>How to use To-Do-List</h1>
+            <h1 className="slideOneh1">How to use To-Do-List</h1>
             
             <div className="content-grid">
               <div className="text-content">
@@ -113,7 +113,7 @@ export default function AboutUsPage() {
         {/* Slide 6: Key Features */}
         <section className="slide bg-space-dark-2">
           <div className="slide-content">
-            <h1>User Reports</h1>
+            <h1 className="slideOneh1">User Reports</h1>
             
             <div className="content-grid">
              <div className="planet-image"><img src="/cat1.png" alt="test image" /> </div>

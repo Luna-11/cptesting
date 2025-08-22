@@ -332,6 +332,10 @@ body {
   margin-bottom: 0.5rem;
   line-height: 1;
 }
+.slideOneh1
+{
+  font-size: 3rem;
+}
 
 .slide-subtitle {
   font-size: 2.5rem;
@@ -443,6 +447,8 @@ body {
 /* ===== BACKGROUND STYLES ===== */
 .bg-space-gradient-1 {
   background-image: linear-gradient(to bottom, #3d312e, #bba2a2, #f0eeee);
+  color: #3d312e;
+  font-weight: bold;
 }
 
 .bg-space-dark-1 {

@@ -6,12 +6,12 @@ export function middleware(request: NextRequest) {
   const userRole = request.cookies.get('userRole')?.value;
   const pathname = request.nextUrl.pathname;
 
-  // Allow login, register, and API routes
+
   if (pathname.startsWith('/api') || pathname === '/login' || pathname === '/register') {
     return NextResponse.next();
   }
 
-  // Redirect to login if not authenticated
+
   if (!loggedIn) {
     return NextResponse.redirect(new URL('/login', request.url));
   }

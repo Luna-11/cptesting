@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== FONT STYLES ===== */
 .crimson-text-regular {
   font-family: "Crimson Text", serif;
   font-weight: 400;
@@ -38,7 +39,7 @@
   font-style: italic;
 }
 
-/* Global Background */
+/* ===== GLOBAL STYLES ===== */
 html {
   font-family: "Crimson Text", sans-serif;
 }
@@ -47,6 +48,8 @@ body {
   background-color: #f0eeee;
   color: #3d312e;
 }
+
+/* ===== COMPONENT STYLES ===== */
 
 /* Sidebar */
 .sidebar {
@@ -89,11 +92,13 @@ body {
   color: #f0eeee;
 }
 
+/* ===== CALENDAR STYLES ===== */
+
 /* Calendar Container */
 .calendar-container {
   background: #f0eeee;
   box-shadow: 0px 4px 10px rgba(61, 49, 46, 0.1);
-  border-radius: 20px; /* Main calendar border-radius */
+  border-radius: 20px;
   padding: 20px;
   overflow: hidden;
 }
@@ -124,7 +129,7 @@ body {
 
 .fc-daygrid-day-frame {
   background-color: #ffffff;
-  border-radius: 16px; /* Always rounded day cells */
+  border-radius: 16px;
   padding: 8px;
   min-height: 80px;
   transition: background-color 0.2s ease;
@@ -133,15 +138,6 @@ body {
 
 .fc-daygrid-day-frame:hover {
   background-color: #bba2a2;
-}
-
-/* Remove grid borders for cleaner tile spacing */
-.fc-theme-standard .fc-scrollgrid {
-  border: none;
-}
-
-.fc-daygrid-day {
-  padding: 6px;
 }
 
 /* Date number in top-right corner */
@@ -190,7 +186,7 @@ body {
   color: #3d312e;
 }
 
-/* Remove FullCalendar default header button borders */
+/* FullCalendar buttons */
 .fc-button {
   background: transparent;
   border: none;
@@ -215,6 +211,7 @@ body {
 .fc-scrollgrid-section-header td {
   border: none;
 }
+
 /* FullCalendar header toolbar button styles */
 .fc .fc-button {
   background-color: #3d312e;
@@ -246,27 +243,19 @@ body {
   margin-bottom: 1rem;
 }
 
-/* Optional: make title font bolder and darker */
-.fc-toolbar-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #3d312e;
-}
-
+/* Today's date styling */
 .fc .fc-daygrid-day.fc-day-today {
   border: none !important;
   background-color: transparent !important;
 }
 
-
-/* Optional: when hovered, keep hover color on top of today border */
 .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-frame:hover {
   background-color: #bba2a2;
 }
 
 .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
   position: relative;
-  padding-right: 20px; /* space for the image */
+  padding-right: 20px;
 }
 
 .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number::after {
@@ -283,6 +272,8 @@ body {
   background-position: center;
 }
 
+/* ===== ABOUT US / SLIDES STYLES ===== */
+
 /* Slide Container Styles */
 .slides-container {
   scroll-snap-type: y mandatory;
@@ -298,7 +289,7 @@ body {
   flex-direction: column;
   color: white;
   position: relative;
-  padding: 2rem;
+  padding: 0.5rem 2rem;
   box-sizing: border-box;
 }
 
@@ -338,7 +329,7 @@ body {
 
 .slide-title {
   font-size: 4rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   line-height: 1;
 }
 
@@ -353,7 +344,6 @@ body {
   margin-bottom: 3rem;
 }
 
-
 /* Grid Layout */
 .content-grid {
   display: grid;
@@ -365,7 +355,6 @@ body {
 .text-content {
   max-width: 500px;
 }
-
 
 /* Buttons */
 .cta-button {
@@ -425,7 +414,33 @@ body {
   font-size: 1.5rem;
 }
 
-/* Background Gradients */
+/* Planet Image Styles */
+.planet-image {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 2rem 0;
+}
+
+.planet-image img {
+  max-width: 500px;
+  max-height: 500px;
+  object-fit: contain;
+}
+
+/* For the first slide specifically */
+.bg-space-gradient-1 .planet-image img {
+  max-width: 400px;
+  max-height: 400px;
+}
+
+/* Adjust content layout for first slide */
+.bg-space-gradient-1 .slide-content {
+  text-align: center;
+  align-items: center;
+}
+
+/* ===== BACKGROUND STYLES ===== */
 .bg-space-gradient-1 {
   background-image: linear-gradient(to bottom, #3d312e, #bba2a2, #f0eeee);
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import mysql from 'mysql2/promise';
+import { db } from '@script/db';
 
 export async function POST(request: Request) {
   try {
@@ -13,15 +13,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'studywithme'
-    });
-
     try {
-      const [users] = await connection.execute(
+      const [users] = await db.execute(
         'SELECT user_id, name, email, password, role_id FROM user WHERE name = ? OR email = ?',
         [username.trim(), username.trim()]
       );
@@ -43,22 +36,32 @@ export async function POST(request: Request) {
         );
       }
 
+      // Role mapping (easy to extend if DB adds more roles later)
+      const roleMap: Record<number, string> = {
+        1: 'admin',
+        3: 'pro'
+      };
+      const userRole = roleMap[user.role_id] || 'user';
+
       const response = NextResponse.json({
         success: true,
         user: {
           id: user.user_id,
           name: user.name,
-          role: user.role_id === 1 ? 'admin' : 'user'
+          role: userRole
         }
       });
 
-      // Set secure cookies
+      // Cookie expiration: 1 day (24 hours)
+      const oneDay = 24 * 60 * 60; // in seconds
+
+      // Overwrites cookies if already set
       response.cookies.set('loggedIn', 'true', {
         path: '/',
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 60 * 60 * 24 * 7 // 1 week
+        maxAge: oneDay
       });
 
       response.cookies.set('userId', user.user_id.toString(), {
@@ -66,21 +69,24 @@ export async function POST(request: Request) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 60 * 60 * 24 * 7
+        maxAge: oneDay
       });
 
-      response.cookies.set('role', user.role_id === 1 ? 'admin' : 'user', {
+      response.cookies.set('role', userRole, {
         path: '/',
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 60 * 60 * 24 * 7
+        maxAge: oneDay
       });
 
       return response;
-
-    } finally {
-      await connection.end();
+    } catch (dbError) {
+      console.error('Database query error:', dbError);
+      return NextResponse.json(
+        { success: false, message: 'Cannot query database' },
+        { status: 500 }
+      );
     }
 
   } catch (error) {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@script/db';
+import { db } from '@script/db'; // ✅ db is now a connection pool
 import type { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -21,21 +21,21 @@ function validateAuthCookies(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { userId } = validateAuthCookies(request);
-    
-    const [events] = await db.query(
+
+    const [events] = await db.execute(
       'SELECT * FROM calendar WHERE user_id = ? ORDER BY event_date ASC',
       [userId]
     );
-    
+
     return NextResponse.json(Array.isArray(events) ? events : []);
-    
+
   } catch (error: any) {
     console.error('GET error:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch events',
         details: error.message,
-        action: error.message.includes('Unauthorized') ? 'relogin' : 'retry'
+        action: error.message.includes('Unauthorized') ? 'relogin' : 'retry',
       },
       { status: error.message.includes('Unauthorized') ? 401 : 500 }
     );
@@ -47,8 +47,7 @@ export async function POST(request: NextRequest) {
   try {
     const { userId } = validateAuthCookies(request);
     const body = await request.json();
-    
-    // Validate input
+
     const { event_name, event_date } = body;
     if (!event_name?.trim() || !event_date) {
       return NextResponse.json(
@@ -57,8 +56,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insert event
-    const [result]: any = await db.query(
+    const [result]: any = await db.execute(
       'INSERT INTO calendar (user_id, event_name, event_date) VALUES (?, ?, ?)',
       [userId, event_name.trim(), event_date]
     );
@@ -73,17 +71,17 @@ export async function POST(request: NextRequest) {
         event_id: result.insertId,
         user_id: userId,
         event_name: event_name.trim(),
-        event_date
-      }
+        event_date,
+      },
     });
 
   } catch (error: any) {
     console.error('POST error:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to add event',
         details: error.message,
-        action: error.message.includes('Unauthorized') ? 'relogin' : 'retry'
+        action: error.message.includes('Unauthorized') ? 'relogin' : 'retry',
       },
       { status: error.message.includes('Unauthorized') ? 401 : 500 }
     );
@@ -104,8 +102,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Verify event exists and belongs to user
-    const [check]: any = await db.query(
+    const [check]: any = await db.execute(
       'SELECT event_id FROM calendar WHERE event_id = ? AND user_id = ?',
       [eventId, userId]
     );
@@ -117,8 +114,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete event
-    const [result]: any = await db.query(
+    const [result]: any = await db.execute(
       'DELETE FROM calendar WHERE event_id = ? AND user_id = ?',
       [eventId, userId]
     );
@@ -126,16 +122,16 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: true,
       deleted: result.affectedRows === 1,
-      eventId
+      eventId,
     });
 
   } catch (error: any) {
     console.error('DELETE error:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to delete event',
         details: error.message,
-        action: error.message.includes('Unauthorized') ? 'relogin' : 'retry'
+        action: error.message.includes('Unauthorized') ? 'relogin' : 'retry',
       },
       { status: error.message.includes('Unauthorized') ? 401 : 500 }
     );

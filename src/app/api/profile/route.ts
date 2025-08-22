@@ -1,7 +1,7 @@
 // app/api/profile/route.ts
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createConnection } from '@script/db';
+import { db } from '@script/db';
 
 const DEFAULT_PROFILE = {
   bio: "Design is not just what it looks like, design is how it works.",
@@ -25,7 +25,7 @@ export async function GET() {
   }
 
   try {
-    const connection = await createConnection();
+    const connection = await db.getConnection();
     
     // Fetch user data - get username from user table
     const [userRows] = await connection.execute(
@@ -39,7 +39,7 @@ export async function GET() {
       [userId]
     );
 
-    await connection.end();
+    connection.release(); // ✅ release back to pool
 
     const users = userRows as any[];
     if (users.length === 0) {
@@ -51,10 +51,9 @@ export async function GET() {
     
     return NextResponse.json({
       user: {
-        username: user.name // Get username from database
+        username: user.name
       },  
       profile: {
-        // Use values from database or fall back to defaults
         profileImage: profile.profile_image || DEFAULT_PROFILE.profileImage,
         bannerImage: profile.banner_image || DEFAULT_PROFILE.bannerImage,
         bio: profile.bio || DEFAULT_PROFILE.bio,
@@ -86,7 +85,7 @@ export async function PUT(request: Request) {
 
   try {
     const data = await request.json();
-    const connection = await createConnection();
+    const connection = await db.getConnection();
 
     // Update username in user table if provided and different
     if (data.username) {
@@ -119,53 +118,44 @@ export async function PUT(request: Request) {
       const updateFields: string[] = [];
       const updateValues: any[] = [];
       
-      // Check each field and only update if it's different and provided
       if (data.profileImage !== undefined && data.profileImage !== existingProfile.profile_image) {
         updateFields.push('profile_image = ?');
         updateValues.push(data.profileImage);
       }
-      
       if (data.bannerImage !== undefined && data.bannerImage !== existingProfile.banner_image) {
         updateFields.push('banner_image = ?');
         updateValues.push(data.bannerImage);
       }
-      
       if (data.bio !== undefined && data.bio !== existingProfile.bio) {
         updateFields.push('bio = ?');
         updateValues.push(data.bio);
       }
-      
       if (data.intro !== undefined && data.intro !== existingProfile.intro) {
         updateFields.push('intro = ?');
         updateValues.push(data.intro);
       }
-      
       if (data.description !== undefined && data.description !== existingProfile.description) {
         updateFields.push('description = ?');
         updateValues.push(data.description);
       }
-      
       if (data.bannerText !== undefined && data.bannerText !== existingProfile.banner_text) {
         updateFields.push('banner_text = ?');
         updateValues.push(data.bannerText);
       }
-      
       if (data.occupation !== undefined && data.occupation !== existingProfile.occupation) {
         updateFields.push('occupation = ?');
         updateValues.push(data.occupation);
       }
       
-      // Only execute update if there are fields to update
       if (updateFields.length > 0) {
-        updateValues.push(userId); // Add userId for WHERE clause
-        
+        updateValues.push(userId);
         await connection.execute(
           `UPDATE user_profiles SET ${updateFields.join(', ')} WHERE user_id = ?`,
           updateValues
         );
       }
     } else {
-      // Create new profile with only the provided fields (or defaults for missing ones)
+      // Create new profile
       await connection.execute(
         `INSERT INTO user_profiles 
          (user_id, profile_image, banner_image, bio, intro, description, banner_text, occupation)
@@ -183,7 +173,8 @@ export async function PUT(request: Request) {
       );
     }
 
-    await connection.end();
+    connection.release(); // ✅ release
+
     return NextResponse.json({ message: 'Profile updated successfully' });
   } catch (error) {
     console.error('Database error:', error);
@@ -215,9 +206,9 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const connection = await createConnection();
+    const connection = await db.getConnection();
 
-    // Verify current password from user table
+    // Verify current password
     const [userRows] = await connection.execute(
       `SELECT password FROM user WHERE user_id = ?`,
       [userId]
@@ -225,20 +216,19 @@ export async function PATCH(request: Request) {
 
     const users = userRows as any[];
     if (users.length === 0) {
-      await connection.end();
+      connection.release();
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const user = users[0];
     if (currentPassword !== user.password) {
-      await connection.end();
+      connection.release();
       return NextResponse.json(
         { error: 'Current password is incorrect' },
         { status: 400 }
       );
     }
 
-    // Only update password if it's different
     if (currentPassword !== newPassword) {
       await connection.execute(
         `UPDATE user SET password = ? WHERE user_id = ?`,
@@ -246,7 +236,8 @@ export async function PATCH(request: Request) {
       );
     }
 
-    await connection.end();
+    connection.release(); // ✅ release
+
     return NextResponse.json({ message: 'Password updated successfully' });
   } catch (error) {
     console.error('Database error:', error);

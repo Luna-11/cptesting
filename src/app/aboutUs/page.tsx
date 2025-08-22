@@ -14,6 +14,7 @@ export default function AboutUsPage() {
         <section className="slide bg-space-gradient-1">
 
           <div className="slide-content">
+            <div className="planet-image"><img src="/cat11.png" alt="cat image" /> </div>
             <h1>HOW TO USE</h1>
             <h2>STUDY-WITH-ME</h2>
             <p className="slide-description">This website is developed in order to help students to manage their time effectively and efficiently.</p>

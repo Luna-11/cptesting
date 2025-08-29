@@ -106,7 +106,7 @@ export async function GET(request: Request) {
       [...queryParams, limit, offset]
     );
 
-    // Transform data for response
+    // Transform data for response - include receipt_image for display on the right side
     const transformedPayments = payments.map(payment => ({
       payment_id: payment.payment_id,
       user_id: payment.user_id,
@@ -116,7 +116,7 @@ export async function GET(request: Request) {
       status: payment.status,
       months: payment.months,
       amount: payment.amount,
-      receipt_image: payment.receipt_image,
+      receipt_image: payment.receipt_image, // This is the key field for the right side display
       payment_date: payment.payment_date
     }));
 
@@ -353,7 +353,7 @@ export async function POST(request: Request) {
       // Commit transaction
       await connection.commit();
 
-      // Get updated payment details for response
+      // Get updated payment details for response - including receipt_image
       const [updatedPayment] = await connection.execute<PaymentWithUser[]>(
         `SELECT 
           up.*,
@@ -370,7 +370,10 @@ export async function POST(request: Request) {
       return NextResponse.json({
         status: 'success',
         message: `Payment ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
-        payment: updatedPayment[0]
+        payment: {
+          ...updatedPayment[0],
+          receipt_image: updatedPayment[0].receipt_image // Ensure receipt image is included
+        }
       });
 
     } catch (innerError: any) {

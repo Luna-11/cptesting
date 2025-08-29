@@ -1,5 +1,8 @@
 // src/components/Navbar.tsx
+
 "use client";
+
+import { UserRole } from "./Sidebar";
 
 import { Menu, Bell } from "lucide-react";
 import Link from "next/link";
@@ -7,7 +10,7 @@ import { useState, useEffect } from "react";
 
 type NavbarProps = {
   setIsSidebarOpen?: React.Dispatch<React.SetStateAction<boolean>>;
-  userRole?: number;
+  userRole?: UserRole;
 };
 
 export default function Navbar({ setIsSidebarOpen, userRole }: NavbarProps) {
@@ -16,7 +19,7 @@ export default function Navbar({ setIsSidebarOpen, userRole }: NavbarProps) {
   const [notifications, setNotifications] = useState<any[]>([]);
 
   // Check if user is logged in (replace with your actual auth check)
-  const isLoggedIn = true; // Set this based on your auth state
+  const isLoggedIn = true;
 
   // Fetch notifications when component mounts
   useEffect(() => {
@@ -60,7 +63,7 @@ export default function Navbar({ setIsSidebarOpen, userRole }: NavbarProps) {
         {/* Left Side - Keep exactly as you had it */}
         <div className="text-xl flex-1 text-center">
           <p>Study-With-Me</p>
-        </div>  
+        </div>
 
         {/* Right Side - Keep your existing structure */}
         <div className="flex items-center space-x-6 mr-8">

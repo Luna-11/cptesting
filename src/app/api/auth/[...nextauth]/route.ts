@@ -1,8 +1,7 @@
-import NextAuth, { type AuthOptions, type DefaultSession, type User as NextAuthUser } from 'next-auth';
+import NextAuth, { type AuthOptions, type DefaultSession } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import mysql from 'mysql2/promise';
-import { db } from '@script/db';
 
 // Database user interface
 interface DatabaseUser {
@@ -13,12 +12,21 @@ interface DatabaseUser {
   role_id: number;
 }
 
-// Custom user type that extends NextAuth's User
+// Map numeric role_id → string role
+function mapRole(roleId: number): "user" | "pro" | "admin" {
+  switch (roleId) {
+    case 1: return "admin";
+    case 3: return "pro";
+    default: return "user"; // BASIC (2) or unknown
+  }
+}
+
+// Custom user type
 interface AppUser {
   id: string;
   name: string;
   email: string;
-  role: number;
+  role: "user" | "pro" | "admin";
 }
 
 // Extend NextAuth types
@@ -64,7 +72,7 @@ export const authOptions: AuthOptions = {
             id: user.user_id.toString(),
             name: user.name,
             email: user.email,
-            role: user.role_id
+            role: mapRole(user.role_id)  
           };
         } catch (error) {
           console.error('Authentication error:', error);
@@ -77,7 +85,7 @@ export const authOptions: AuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        token.role = user.role; 
       }
       return token;
     },
@@ -86,7 +94,7 @@ export const authOptions: AuthOptions = {
         session.user = {
           ...session.user,
           id: token.sub,
-          role: token.role as number
+          role: token.role as "user" | "pro" | "admin"
         };
       }
       return session;
@@ -103,4 +111,3 @@ export const authOptions: AuthOptions = {
 
 const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
-console.log("NextAuth handler loaded");

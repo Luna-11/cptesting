@@ -140,6 +140,7 @@ export default function ProfilePage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+
   };
 
   const handleAboutChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -430,6 +431,10 @@ export default function ProfilePage() {
       });
     };
 
+    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setEditText(e.target.value);
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       setBannerData(prev => ({
@@ -479,7 +484,7 @@ export default function ProfilePage() {
                 </label>
                 <textarea
                   value={editText}
-                  onChange={(e) => setEditText(e.target.value)}
+                  onChange={handleTextChange}
                   maxLength={MAX_LENGTH}
                   className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm h-32 bg-white"
                   placeholder="Enter your banner text. Highlight words with *asterisks*"
@@ -564,6 +569,7 @@ export default function ProfilePage() {
                 name="newPassword"
                 value={formData.newPassword}
                 onChange={handleChange}
+                autoComplete="new-password"
                 className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm bg-white"
               />
             </div>
@@ -648,7 +654,7 @@ export default function ProfilePage() {
               type="button"
               onClick={() => setIsEditingAbout(false)}
               className="flex-1 px-4 py-2 text-sm border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition"
-            >
+              >
               Cancel
             </button>
             <button

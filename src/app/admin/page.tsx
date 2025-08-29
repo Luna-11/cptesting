@@ -422,7 +422,6 @@ const UsersTab = () => {
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
-              <option value="dormant">Dormant</option>
             </select>
           </div>
           <button 
@@ -444,7 +443,6 @@ const UsersTab = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -505,13 +503,6 @@ const UsersTab = () => {
                             <Star className="h-4 w-4" />
                           </button>
                         )}
-                        <button 
-                          onClick={() => handleUserAction('edit', user)}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
                         <button 
                           onClick={() => handleUserAction('suspend', user)}
                           className={user.status === 'active' ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'}
@@ -622,6 +613,7 @@ const SubscriptionsTab = () => {
   const [filterPaymentStatus, setFilterPaymentStatus] = useState<'all' | 'Pending' | 'Approved' | 'Rejected'>('all');
   const [selectedPayment, setSelectedPayment] = useState<any>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   const fetchPayments = async (status = filterPaymentStatus) => {
     setLoadingPayments(true);
@@ -661,11 +653,17 @@ const SubscriptionsTab = () => {
         fetchPayments(filterPaymentStatus);
         setSelectedPayment(null);
         setRejectionReason('');
+        setShowDetailModal(false);
       }
     } catch (err) {
       console.error(`Failed to ${action} payment:`, err);
       setError(err instanceof Error ? err.message : `Failed to ${action} payment`);
     }
+  };
+
+  const openPaymentDetail = (payment: any) => {
+    setSelectedPayment(payment);
+    setShowDetailModal(true);
   };
 
   useEffect(() => {
@@ -738,18 +736,19 @@ const SubscriptionsTab = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {loadingPayments ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
                     Loading payments...
                   </td>
                 </tr>
               ) : payments.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
                     No payments found
                   </td>
                 </tr>
@@ -786,15 +785,6 @@ const SubscriptionsTab = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
-                        {payment.receipt_image && (
-                          <button
-                            onClick={() => setSelectedPayment(payment)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View Receipt"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                        )}
                         {payment.status === 'Pending' && (
                           <>
                             <button
@@ -818,6 +808,15 @@ const SubscriptionsTab = () => {
                         )}
                       </div>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => openPaymentDetail(payment)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="View Details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -826,99 +825,153 @@ const SubscriptionsTab = () => {
         </div>
       </div>
 
-      {/* Receipt Modal */}
-      {selectedPayment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      {/* Payment Detail Modal */}
+      {showDetailModal && selectedPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Payment Receipt</h3>
+              <div className="flex justify-between items-start mb-6">
+                <h3 className="text-xl font-medium text-gray-900">Payment Details</h3>
                 <button 
-                  onClick={() => setSelectedPayment(null)}
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    setSelectedPayment(null);
+                  }}
                   className="text-gray-400 hover:text-gray-500"
                 >
-                  <span className="sr-only">Close</span>
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
-              {selectedPayment.receipt_image && (
-                <div className="mb-4">
-                  <img
-                    src={selectedPayment.receipt_image}
-                    alt="Payment receipt"
-                    className="w-full rounded-lg border border-gray-200"
-                  />
-                </div>
-              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">User Information</h4>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center mb-3">
+                        <div className="flex-shrink-0 h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                          <span className="text-blue-600 font-medium">{selectedPayment.user_name?.charAt(0)}</span>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-lg font-medium text-gray-900">{selectedPayment.user_name}</div>
+                          <div className="text-sm text-gray-500">{selectedPayment.user_email}</div>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        User ID: {selectedPayment.user_id}
+                      </div>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">User</label>
-                  <p className="text-sm text-gray-900">{selectedPayment.user_name}</p>
-                  <p className="text-sm text-gray-500">{selectedPayment.user_email}</p>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Payment Information</h4>
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Amount:</span>
+                        <span className="font-medium">${selectedPayment.amount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Duration:</span>
+                        <span className="font-medium">
+                          {selectedPayment.months} month{selectedPayment.months > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Payment Method:</span>
+                        <span className="font-medium">{selectedPayment.method_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Status:</span>
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full 
+                          ${selectedPayment.status === 'Approved' ? 'bg-green-100 text-green-800' : 
+                            selectedPayment.status === 'Rejected' ? 'bg-red-100 text-red-800' : 
+                            'bg-yellow-100 text-yellow-800'}`}>
+                          {selectedPayment.status}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Payment Date:</span>
+                        <span className="font-medium">
+                          {new Date(selectedPayment.payment_date).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Payment ID:</span>
+                        <span className="font-medium">{selectedPayment.payment_id}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Amount</label>
-                  <p className="text-sm text-gray-900">${selectedPayment.amount}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Duration</label>
-                  <p className="text-sm text-gray-900">
-                    {selectedPayment.months} month{selectedPayment.months > 1 ? 's' : ''}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Method</label>
-                  <p className="text-sm text-gray-900">{selectedPayment.method_name}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <p className="text-sm text-gray-900">{selectedPayment.status}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Date</label>
-                  <p className="text-sm text-gray-900">
-                    {new Date(selectedPayment.payment_date).toLocaleDateString()}
-                  </p>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Receipt Image</h4>
+                  {selectedPayment.receipt_image ? (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <img
+                        src={selectedPayment.receipt_image}
+                        alt="Payment receipt"
+                        className="w-full h-auto max-h-80 object-contain rounded-lg border border-gray-200"
+                      />
+                      <div className="mt-3 text-center">
+                        <a
+                          href={selectedPayment.receipt_image}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-sm"
+                        >
+                          View full image
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 p-8 rounded-lg flex flex-col items-center justify-center text-gray-500">
+                      <CreditCard className="h-12 w-12 mb-3" />
+                      <p>No receipt image available</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {selectedPayment.status === 'Pending' && (
-                <>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Rejection Reason (optional)
-                    </label>
-                    <textarea
-                      value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
-                      placeholder="Reason for rejection..."
-                      className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                      rows={3}
-                    />
+                <div className="border-t pt-6">
+                  <h4 className="text-sm font-medium text-gray-700 mb-4">Admin Actions</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Rejection Reason (optional)
+                      </label>
+                      <textarea
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        placeholder="Reason for rejection..."
+                        className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-blue-500 focus:border-blue-500"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex flex-col justify-end space-y-3">
+                      <button
+                        onClick={() => handlePaymentAction(selectedPayment.payment_id, 'approve')}
+                        className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center"
+                      >
+                        <CheckCircle className="h-5 w-5 mr-2" />
+                        Approve Payment
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (rejectionReason.trim() || window.confirm('Are you sure you want to reject without providing a reason?')) {
+                            handlePaymentAction(selectedPayment.payment_id, 'reject');
+                          }
+                        }}
+                        className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center"
+                      >
+                        <XCircle className="h-5 w-5 mr-2" />
+                        Reject Payment
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex space-x-3 justify-end">
-                    <button
-                      onClick={() => handlePaymentAction(selectedPayment.payment_id, 'approve')}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (rejectionReason.trim() || window.confirm('Are you sure you want to reject without providing a reason?')) {
-                          handlePaymentAction(selectedPayment.payment_id, 'reject');
-                        }
-                      }}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -927,6 +980,7 @@ const SubscriptionsTab = () => {
     </div>
   );
 };
+
   const EngagementTab = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -997,156 +1051,6 @@ const SubscriptionsTab = () => {
       </div>
     </div>
   );
-
-  const ReportsTab = () => {
-    const [reportData, setReportData] = useState<ReportData | null>(null);
-    const [reportLoading, setReportLoading] = useState(false);
-    const [reportType, setReportType] = useState<'users' | 'activity' | 'revenue'>('users');
-
-    const generateReport = async () => {
-      setReportLoading(true);
-      try {
-        const response = await fetchWithAuth<ReportData>(`/api/admin/reports?type=${reportType}`);
-        if (response.data) {
-          setReportData(response.data);
-        }
-      } catch (err) {
-        console.error('Failed to generate report:', err);
-      } finally {
-        setReportLoading(false);
-      }
-    };
-
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-medium mb-4">Generate Reports</h3>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <select
-              className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={reportType}
-              onChange={(e) => setReportType(e.target.value as 'users' | 'activity' | 'revenue')}
-            >
-              <option value="users">User Report</option>
-              <option value="activity">Activity Report</option>
-              <option value="revenue">Revenue Report</option>
-            </select>
-            <button
-              onClick={generateReport}
-              disabled={reportLoading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center"
-            >
-              {reportLoading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Generate Report
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {reportData && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">
-                {reportData.type === 'users' && 'User Report'}
-                {reportData.type === 'activity' && 'Activity Report'}
-                {reportData.type === 'revenue' && 'Revenue Report'}
-              </h3>
-              <p className="text-sm text-gray-500">
-                Generated at: {new Date(reportData.generatedAt).toLocaleString()}
-              </p>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {reportData.type === 'users' && (
-                      <>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      </>
-                    )}
-                    {reportData.type === 'activity' && (
-                      <>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activity</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-                      </>
-                    )}
-                    {reportData.type === 'revenue' && (
-                      <>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">New Users</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Churn</th>
-                      </>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {Array.isArray(reportData.data) && reportData.data.length > 0 ? (
-                    reportData.data.map((item: any, index) => (
-                      <tr key={index}>
-                        {reportData.type === 'users' && (
-                          <>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.user_id}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.email}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                ${item.status === 'active' ? 'bg-green-100 text-green-800' : 
-                                  item.status === 'inactive' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                {item.status}
-                              </span>
-                            </td>
-                          </>
-                        )}
-                        {reportData.type === 'activity' && (
-                          <>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.type}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.user_name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.activity}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {new Date(item.timestamp).toLocaleString()}
-                            </td>
-                          </>
-                        )}
-                        {reportData.type === 'revenue' && (
-                          <>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.month}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.revenue}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.new_users}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.churn_rate}%</td>
-                          </>
-                        )}
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
-                        No data available
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   // Helper components
   const StatCard = ({ icon, title, value, change }: { icon: React.ReactNode; title: string; value: string | number; change: string }) => (
@@ -1240,7 +1144,7 @@ const SubscriptionsTab = () => {
       <div className="bg-white shadow-sm flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
-            {(['overview', 'users', 'subscriptions', 'engagement', 'reports'] as const).map((tab) => (
+            {(['overview', 'users', 'subscriptions', 'engagement'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -1275,7 +1179,6 @@ const SubscriptionsTab = () => {
           {activeTab === 'users' && <UsersTab />}
           {activeTab === 'subscriptions' && <SubscriptionsTab />}
           {activeTab === 'engagement' && <EngagementTab />}
-          {activeTab === 'reports' && <ReportsTab />}
         </div>
       </div>
 

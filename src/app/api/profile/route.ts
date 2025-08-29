@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { db } from '@script/db';
+export const dynamic = 'force-dynamic';
 
 const DEFAULT_PROFILE = {
   bio: "Design is not just what it looks like, design is how it works.",
@@ -236,7 +237,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    connection.release(); // ✅ release
+    connection.release();
 
     return NextResponse.json({ message: 'Password updated successfully' });
   } catch (error) {

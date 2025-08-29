@@ -4,9 +4,27 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/options"
 import { getServerSession } from "next-auth/next"
 import { db } from "@script/db"
 
+export enum UserRole {
+  BASIC = "user",
+  PRO = "pro",
+  ADMIN = "admin",
+}
+
+// Map DB numeric roles into frontend-friendly enums
+function mapRole(role: number): UserRole {
+  switch (role) {
+    case 3:
+      return UserRole.PRO
+    case 99:
+      return UserRole.ADMIN
+    default:
+      return UserRole.BASIC
+  }
+}
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -14,9 +32,12 @@ export async function POST(req: Request) {
   try {
     const body = await req.json()
     const { focusDuration } = body
-    
-    // Only allow duration change if user is Pro
-    if (session.user.role !== 3) {
+
+    // Convert session role (string) → number → map
+    const userRole = mapRole(Number(session.user.role ?? 0))
+
+    // Only allow duration change if Pro or Admin
+    if (userRole !== UserRole.PRO && userRole !== UserRole.ADMIN) {
       return NextResponse.json({ error: "Pro feature only" }, { status: 403 })
     }
 
@@ -28,7 +49,6 @@ export async function POST(req: Request) {
     )
 
     return NextResponse.json({ success: true })
-    
   } catch (error) {
     console.error("Error:", error)
     return NextResponse.json({ error: "Database error" }, { status: 500 })
@@ -37,7 +57,7 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
-  
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -49,18 +69,17 @@ export async function GET(req: Request) {
     )
 
     const defaultDuration = 1500
-    const isProUser = session.user.role === 3 // Check role directly
+    const userRole = mapRole(Number(session.user.role ?? 0))
 
     return NextResponse.json({
       focus_duration: settings?.[0]?.focus_duration || defaultDuration,
-      is_pro_user: isProUser
+      user_role: userRole,
     })
-    
   } catch (error) {
     console.error("Error:", error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       focus_duration: 1500,
-      is_pro_user: false 
+      user_role: UserRole.BASIC,
     })
   }
 }

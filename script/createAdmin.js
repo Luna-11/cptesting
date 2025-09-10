@@ -4,15 +4,15 @@ const bcrypt = require('bcrypt');
 (async () => {
   // Database connection - UPDATE THESE VALUES!
   const connection = await mysql.createConnection({
-    host: 'localhost',      // Your MySQL host
-    user: 'root',           // Your MySQL username
-    password: '',   // Your MySQL password
-    database: 'studywithme' // Your database name
+    host: 'localhost', 
+    user: 'root',         
+    password: '',   
+    database: 'studywithme' 
   });
 
   // Admin configuration
-  const adminPassword = '12345'; // Default admin password
-  const adminRoleId = 1;         // Role ID for admin (different from default 2)
+  const adminPassword = '12345'; 
+  const adminRoleId = 1;      
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
   try {

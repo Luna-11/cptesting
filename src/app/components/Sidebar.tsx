@@ -66,6 +66,17 @@ export default function Sidebar({
             </Tooltip>
           )}
 
+                    {isProUser ? (
+            <NavItem icon={<LockClockIcon className="mr-4 text-white" />} href="/vocab" title="Vocabulary Study" />
+          ) : (
+            <Tooltip title="Upgrade to Pro to unlock Focus Session" arrow>
+              <li className="mb-10 flex items-center text-gray-400 cursor-not-allowed">
+                <LockIcon className="mr-4 text-white" />
+                <span>Focus Session (Pro)</span>
+              </li>
+            </Tooltip>
+          )}
+
           <NavItem icon={<AccountCircleIcon className="mr-4 text-white" />} href="/userReport" title="User Report" />
           <NavItem icon={<AccountCircleIcon className="mr-4 text-white" />} href="/Userprofile" title="Profile" />
         </ul>

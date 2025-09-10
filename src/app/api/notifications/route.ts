@@ -1,109 +1,42 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { db } from "@script/db";
-import type { ResultSetHeader, RowDataPacket } from "mysql2";
 
-interface Notification extends RowDataPacket {
-  notification_id: number;
-  user_id: number;
-  title: string;
-  message: string;
-  type: string;
-  status: string;
-  created_at: string;
-  purchase_status?: string;
-}
-
-export async function GET() {
+// GET all notifications for logged-in user
+export async function GET(req: Request) {
   try {
-    const cookieStore =await cookies();
-    const userId = cookieStore.get("userId")?.value;
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // get userId from cookie (set at login)
+    const cookieHeader = req.headers.get("cookie") || "";
+    const userIdMatch = cookieHeader.match(/userId=(\d+)/);
+    if (!userIdMatch) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
+    const userId = userIdMatch[1];
 
-    const [notifications] = await db.execute<Notification[]>(`
-      SELECT n.*, pn.status AS purchase_status
-      FROM notifications n
-      LEFT JOIN purchase_notifications pn ON n.notification_id = pn.notification_id
-      WHERE n.user_id = ?
-      ORDER BY n.created_at DESC
-      LIMIT 50
-    `, [userId]);
-
-    return NextResponse.json(notifications);
-  } catch (error) {
-    console.error("Error fetching notifications:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+    const [rows] = await db.execute(
+      `SELECT * FROM notification WHERE user_id = ? ORDER BY created_at DESC`,
+      [userId]
     );
+
+    return NextResponse.json(rows);
+  } catch (error) {
+    console.error("Fetch notifications error:", error);
+    return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
+// PUT - mark notification as read
+export async function PUT(req: Request) {
   try {
-    const cookieStore =await cookies();
-    const userId = cookieStore.get("userId")?.value;
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { title, message, type } = body;
-
-    if (!title || !message || !type) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    const [result] = await db.execute<ResultSetHeader>(
-      "INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)",
-      [userId, title, message, type]
-    );
-
-    return NextResponse.json({
-      success: true,
-      notificationId: result.insertId,
-    });
-  } catch (error) {
-    console.error("Error creating notification:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: Request) {
-  try {
-    const cookieStore =await cookies();
-    const userId = cookieStore.get("userId")?.value;
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { notificationId } = await request.json();
-    if (!notificationId) {
-      return NextResponse.json(
-        { error: "Notification ID is required" },
-        { status: 400 }
-      );
-    }
+    const { notificationId } = await req.json();
 
     await db.execute(
-      "UPDATE notifications SET status = 'read' WHERE notification_id = ? AND user_id = ?",
-      [notificationId, userId]
+      `UPDATE notification SET status = 'read' WHERE notification_id = ?`,
+      [notificationId]
     );
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error marking notification as read:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("Mark notification error:", error);
+    return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }

@@ -16,14 +16,14 @@ interface BreakSessionInput {
   duration: number;
   start_time: string;
   end_time: string;
-  break_type: 'coffee' | 'meal' | 'other';
+  break_type: "coffee" | "meal" | "other";
 }
 
 const MYANMAR_TIMEZONE_OFFSET = 6.5 * 60 * 60 * 1000;
 
 function getMyanmarDate(date: Date): string {
   const myanmarTime = new Date(date.getTime() + MYANMAR_TIMEZONE_OFFSET);
-  return myanmarTime.toISOString().split('T')[0];
+  return myanmarTime.toISOString().split("T")[0];
 }
 
 function validateDateTime(isoString: string): string {
@@ -31,7 +31,7 @@ function validateDateTime(isoString: string): string {
   if (isNaN(date.getTime())) {
     throw new Error(`Invalid date string: ${isoString}`);
   }
-  return date.toISOString().slice(0, 19).replace('T', ' ');
+  return date.toISOString().slice(0, 19).replace("T", " ");
 }
 
 function calculateDuration(startTime: string, endTime: string): number {
@@ -70,9 +70,9 @@ async function getTodayStudySession(subjectId: number, userId: string) {
 }
 
 async function getTodaySameTypeBreakSession(
-  subjectId: number, 
+  subjectId: number,
   userId: string,
-  breakType: 'coffee' | 'meal' | 'other'
+  breakType: "coffee" | "meal" | "other"
 ) {
   const currentDateMyanmar = getMyanmarDate(new Date());
 
@@ -86,7 +86,6 @@ async function getTodaySameTypeBreakSession(
   );
   return sessions[0] || null;
 }
-
 export async function POST(request: Request) {
   const cookieStore = await cookies();
   const userId = cookieStore.get("userId")?.value;
@@ -110,16 +109,19 @@ export async function POST(request: Request) {
 
   const connection = await db.getConnection();
   try {
-    await connection.query('START TRANSACTION');
+    await connection.query("START TRANSACTION");
 
+    // Verify subject belongs to user
     await verifySubjectOwnership(requestData.subject_id, userId);
 
-    const sessionDuration = requestData.duration ||
+    const sessionDuration =
+      requestData.duration ??
       calculateDuration(requestData.start_time, requestData.end_time);
 
-    const isBreakSession = requestData.break_type !== undefined;
+    const isBreakSession = requestData.is_break;
 
     if (isBreakSession) {
+      // -------------------- BREAK SESSION --------------------
       const breakType = requestData.break_type;
       const existingSession = await getTodaySameTypeBreakSession(
         requestData.subject_id,
@@ -128,36 +130,33 @@ export async function POST(request: Request) {
       );
 
       if (existingSession) {
-        // Update existing break session of same type (applies to all break types)
+        // Update existing break session
         await connection.query<ResultSetHeader>(
           `UPDATE break_sessions 
            SET duration = duration + ?, 
-               end_time = GREATEST(end_time, ?)
+               end_time = GREATEST(end_time, ?),
+               updated_at = CURRENT_TIMESTAMP
            WHERE id = ?`,
-          [
-            sessionDuration,
-            validateDateTime(requestData.end_time),
-            existingSession.id
-          ]
+          [sessionDuration, validateDateTime(requestData.end_time), existingSession.id]
         );
 
-        await connection.query('COMMIT');
+        await connection.query("COMMIT");
         return NextResponse.json({
           success: true,
           sessionId: existingSession.id,
-          type: 'break',
+          type: "break",
           break_type: breakType,
-          action: 'updated',
-          totalDuration: existingSession.duration + sessionDuration
+          action: "updated",
+          totalDuration: existingSession.duration + sessionDuration,
         });
       } else {
-        // Create new break session (only when no existing session of same type exists)
+        // Create new break session
         const validatedData: BreakSessionInput = {
           subject_id: requestData.subject_id,
           duration: sessionDuration,
           start_time: validateDateTime(requestData.start_time),
           end_time: validateDateTime(requestData.end_time),
-          break_type: breakType
+          break_type: breakType,
         };
 
         const [result] = await connection.query<ResultSetHeader>(
@@ -170,57 +169,83 @@ export async function POST(request: Request) {
             validatedData.duration,
             validatedData.start_time,
             validatedData.end_time,
-            validatedData.break_type
+            validatedData.break_type,
           ]
         );
 
-        await connection.query('COMMIT');
-        return NextResponse.json({
-          success: true,
-          sessionId: result.insertId,
-          type: 'break',
-          break_type: breakType,
-          action: 'created',
-          totalDuration: validatedData.duration
-        }, { status: 201 });
+        await connection.query("COMMIT");
+        return NextResponse.json(
+          {
+            success: true,
+            sessionId: result.insertId,
+            type: "break",
+            break_type: breakType,
+            action: "created",
+            totalDuration: validatedData.duration,
+          },
+          { status: 201 }
+        );
       }
     } else {
-      // Handle study session logic (unchanged)
+      // -------------------- STUDY SESSION --------------------
       const existingSession = await getTodayStudySession(
         requestData.subject_id,
         userId
       );
 
       if (existingSession) {
-        await connection.query<ResultSetHeader>(
-          `UPDATE study_sessions 
-           SET duration = duration + ?, 
-               end_time = GREATEST(end_time, ?),
-               notes = COALESCE(?, notes)
-           WHERE id = ?`,
-          [
-            sessionDuration,
-            validateDateTime(requestData.end_time),
-            requestData.notes || null,
-            existingSession.id
-          ]
-        );
+        if (sessionDuration === 0) {
+          // Notes-only update
+          await connection.query<ResultSetHeader>(
+            `UPDATE study_sessions 
+             SET notes = COALESCE(?, notes),
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?`,
+            [requestData.notes || null, existingSession.id]
+          );
 
-        await connection.query('COMMIT');
-        return NextResponse.json({
-          success: true,
-          sessionId: existingSession.id,
-          type: 'study',
-          action: 'updated',
-          totalDuration: existingSession.duration + sessionDuration
-        });
+          await connection.query("COMMIT");
+          return NextResponse.json({
+            success: true,
+            sessionId: existingSession.id,
+            type: "study",
+            action: "notes_updated",
+            totalDuration: existingSession.duration,
+          });
+        } else {
+          // Normal update (add duration + optional notes)
+          await connection.query<ResultSetHeader>(
+            `UPDATE study_sessions 
+             SET duration = duration + ?, 
+                 end_time = GREATEST(end_time, ?),
+                 notes = COALESCE(?, notes),
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?`,
+            [
+              sessionDuration,
+              validateDateTime(requestData.end_time),
+              requestData.notes || null,
+              existingSession.id,
+            ]
+          );
+
+          await connection.query("COMMIT");
+          return NextResponse.json({
+            success: true,
+            sessionId: existingSession.id,
+            type: "study",
+            action: "updated",
+            totalDuration: existingSession.duration + sessionDuration,
+          });
+        }
       } else {
+        // Create new study session
         const validatedData: StudySessionInput = {
           subject_id: requestData.subject_id,
           duration: sessionDuration,
           start_time: validateDateTime(requestData.start_time),
           end_time: validateDateTime(requestData.end_time),
-          notes: requestData.notes || null
+          notes: requestData.notes || null,
         };
 
         const [result] = await connection.query<ResultSetHeader>(
@@ -233,33 +258,37 @@ export async function POST(request: Request) {
             validatedData.duration,
             validatedData.start_time,
             validatedData.end_time,
-            validatedData.notes
+            validatedData.notes,
           ]
         );
 
-        await connection.query('COMMIT');
-        return NextResponse.json({
-          success: true,
-          sessionId: result.insertId,
-          type: 'study',
-          action: 'created',
-          totalDuration: validatedData.duration
-        }, { status: 201 });
+        await connection.query("COMMIT");
+        return NextResponse.json(
+          {
+            success: true,
+            sessionId: result.insertId,
+            type: "study",
+            action: "created",
+            totalDuration: validatedData.duration,
+          },
+          { status: 201 }
+        );
       }
     }
   } catch (error) {
-    await connection.query('ROLLBACK');
-    console.error('Database error:', error);
+    await connection.query("ROLLBACK");
+    console.error("Database error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Database operation failed" },
+      {
+        error:
+          error instanceof Error ? error.message : "Database operation failed",
+      },
       { status: 500 }
     );
   } finally {
     connection.release();
   }
 }
-
-// ... (keep the existing GET endpoint exactly as is)
 
 export async function GET(request: Request) {
   const cookieStore = await cookies();
@@ -270,10 +299,10 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const subject_id = searchParams.get('subject_id');
-    const date = searchParams.get('date');
-    const group_by_day = searchParams.get('group_by_day') === 'true';
-    const type = searchParams.get('type'); // 'study', 'break', or undefined for both
+    const subject_id = searchParams.get("subject_id");
+    const date = searchParams.get("date");
+    const group_by_day = searchParams.get("group_by_day") === "true";
+    const type = searchParams.get("type"); // 'study', 'break', or undefined for both
 
     let query: string;
     const params: (string | number)[] = [userId];
@@ -293,53 +322,77 @@ export async function GET(request: Request) {
           MAX(end_time) AS last_end_time,
           COUNT(*) AS session_count
         FROM (
-          ${type !== 'break' ? `
+          ${
+            type !== "break"
+              ? `
             SELECT 'study' AS type, subject_id, duration, start_time, end_time, NULL AS break_type
             FROM study_sessions
-            WHERE user_id = ? ${subject_id ? 'AND subject_id = ?' : ''} ${date ? 'AND DATE(CONVERT_TZ(start_time, \'+00:00\', \'+06:30\')) = ?' : ''}
-            ${type ? '' : 'UNION ALL'}
-          ` : ''}
-          ${type !== 'study' ? `
+            WHERE user_id = ? ${
+              subject_id ? "AND subject_id = ?" : ""
+            } ${date ? "AND DATE(CONVERT_TZ(start_time, '+00:00', '+06:30')) = ?" : ""}
+            ${type ? "" : "UNION ALL"}
+          `
+              : ""
+          }
+          ${
+            type !== "study"
+              ? `
             SELECT 'break' AS type, subject_id, duration, start_time, end_time, break_type
             FROM break_sessions
-            WHERE user_id = ? ${subject_id ? 'AND subject_id = ?' : ''} ${date ? 'AND DATE(CONVERT_TZ(start_time, \'+00:00\', \'+06:30\')) = ?' : ''}
-          ` : ''}
+            WHERE user_id = ? ${
+              subject_id ? "AND subject_id = ?" : ""
+            } ${date ? "AND DATE(CONVERT_TZ(start_time, '+00:00', '+06:30')) = ?" : ""}
+          `
+              : ""
+          }
         ) AS combined_sessions
         GROUP BY type, subject_id, session_date, break_type
         ORDER BY session_date DESC, type ASC
       `;
 
-      if (type !== 'break') params.push(userId);
+      if (type !== "break") params.push(userId);
       if (subject_id) params.push(Number(subject_id));
       if (date) params.push(date);
-      
-      if (type !== 'study') params.push(userId);
+
+      if (type !== "study") params.push(userId);
       if (subject_id) params.push(Number(subject_id));
       if (date) params.push(date);
     } else {
       query = `
-        ${type !== 'break' ? `
+        ${
+          type !== "break"
+            ? `
           (SELECT 
             'study' AS type, id, subject_id, duration, start_time, end_time, NULL AS break_type, notes
           FROM study_sessions
-          WHERE user_id = ? ${subject_id ? 'AND subject_id = ?' : ''} ${date ? 'AND DATE(CONVERT_TZ(start_time, \'+00:00\', \'+06:30\')) = ?' : ''})
-          ${type ? '' : 'UNION ALL'}
-        ` : ''}
-        ${type !== 'study' ? `
+          WHERE user_id = ? ${
+            subject_id ? "AND subject_id = ?" : ""
+          } ${date ? "AND DATE(CONVERT_TZ(start_time, '+00:00', '+06:30')) = ?" : ""})
+          ${type ? "" : "UNION ALL"}
+        `
+            : ""
+        }
+        ${
+          type !== "study"
+            ? `
           (SELECT 
             'break' AS type, id, subject_id, duration, start_time, end_time, break_type, NULL AS notes
           FROM break_sessions
-          WHERE user_id = ? ${subject_id ? 'AND subject_id = ?' : ''} ${date ? 'AND DATE(CONVERT_TZ(start_time, \'+00:00\', \'+06:30\')) = ?' : ''})
-        ` : ''}
+          WHERE user_id = ? ${
+            subject_id ? "AND subject_id = ?" : ""
+          } ${date ? "AND DATE(CONVERT_TZ(start_time, '+00:00', '+06:30')) = ?" : ""})
+        `
+            : ""
+        }
         ORDER BY start_time DESC
       `;
 
-      if (type !== 'break') {
+      if (type !== "break") {
         params.push(userId);
         if (subject_id) params.push(Number(subject_id));
         if (date) params.push(date);
       }
-      if (type !== 'study') {
+      if (type !== "study") {
         params.push(userId);
         if (subject_id) params.push(Number(subject_id));
         if (date) params.push(date);
@@ -360,7 +413,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, data: enhanced });
   } catch (error) {
-    console.error('Error fetching sessions:', error);
+    console.error("Error fetching sessions:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch sessions" },
       { status: 500 }

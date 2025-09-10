@@ -2,15 +2,13 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 
 export default function Login() {
   const [formData, setFormData] = useState({
     username: '',
     password: ''
   });
-
-  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -22,6 +20,8 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
@@ -29,20 +29,22 @@ export default function Login() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(formData),
-        credentials: 'include' // Important for cookies
+        credentials: 'include'
       });
 
       const data = await res.json();
 
       if (res.ok && data.success) {
-        alert(`Logged in as ${data.user.role}`);
-        router.push('/');
+        // Redirect to root page, middleware will handle the final redirection
+        window.location.href = '/';
       } else {
         alert(data.message || 'Login failed.');
       }
     } catch (error) {
       console.error('Login error:', error);
       alert('Something went wrong. Please try again later.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -95,9 +97,10 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full bg-[#3d312e] text-white py-3 rounded hover:bg-[#4a3c38] transition font-medium"
+              disabled={isLoading}
+              className="w-full bg-[#3d312e] text-white py-3 rounded hover:bg-[#4a3c38] transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Log in
+              {isLoading ? 'Logging in...' : 'Log in'}
             </button>
 
             <p className="text-center mt-6 text-gray-600 text-sm">

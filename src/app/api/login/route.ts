@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         );
       }
 
-      // Role mapping (easy to extend if DB adds more roles later)
+      // Role mapping
       const roleMap: Record<number, string> = {
         1: 'admin',
         3: 'pro'
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       // Cookie expiration: 1 day (24 hours)
       const oneDay = 24 * 60 * 60; // in seconds
 
-      // Overwrites cookies if already set
+      // Set cookies
       response.cookies.set('loggedIn', 'true', {
         path: '/',
         httpOnly: true,

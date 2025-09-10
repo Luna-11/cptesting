@@ -10,7 +10,7 @@ export default function AboutUsPage() {
       </Head>
 
       <div className="slides-container">
-        {/* Slide 1: Title Slide */}
+
         <section className="slide bg-space-gradient-1">
 
           <div className="slide-content">
@@ -22,7 +22,7 @@ export default function AboutUsPage() {
           </div>
         </section>
 
-        {/* Slide 2: Getting Started */}
+
         <section className="slide bg-space-dark-1">
           <div className="slide-content">
             <h1 className="slideOneh1">How to use Calendar Page</h1>
@@ -45,7 +45,7 @@ export default function AboutUsPage() {
           </div>
         </section>
 
-        {/* Slide 3: Key Features */}
+
         <section className="slide bg-space-dark-2">
           <div className="slide-content">
             <h1 className="slideOneh1">Study Session</h1>
@@ -66,7 +66,7 @@ export default function AboutUsPage() {
           </div>
         </section>
 
-        {/* Slide 4: Study Rooms */}
+
         <section className="slide bg-space-dark-3">
           <div className="slide-content">
             <h1 className="slideOneh1">Timetable</h1>
@@ -88,7 +88,7 @@ export default function AboutUsPage() {
           </div>
         </section>
 
-        {/* Slide 5: Getting Started */}
+
         <section className="slide bg-space-dark-1">
           <div className="slide-content">
             <h1 className="slideOneh1">How to use To-Do-List</h1>
@@ -110,7 +110,7 @@ export default function AboutUsPage() {
             </div>
           </div>
         </section>
-        {/* Slide 6: Key Features */}
+
         <section className="slide bg-space-dark-2">
           <div className="slide-content">
             <h1 className="slideOneh1">User Reports</h1>
@@ -127,6 +127,28 @@ export default function AboutUsPage() {
                 </ul>
                 <button className="cta-button">EXPLORE FEATURES</button>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="slide bg-space-dark-1">
+          <div className="slide-content">
+            <h1 className="slideOneh1">How to use Calendar Page</h1>
+            
+            <div className="content-grid">
+              <div className="text-content">
+                <p>The calendare page is mainly for the events arrangement. </p>
+                <ol className="steps-list">
+                  <li>The hamster on the calendar is to show the current date.</li>
+                  <li>Click on the date you would like to set an event.</li>
+                  <li>You can add the name of the event.</li>
+                  <li>You can also choose what color you would like to see on your calendar.</li>
+                  <li>You can always update the event by clicking on the event.</li>
+                </ol>
+                <button className="cta-button">Go to Calendar</button>
+              </div>
+              <div className="planet-image"><img src="/cat5.png" alt="test image" /> </div>
+
             </div>
           </div>
         </section>

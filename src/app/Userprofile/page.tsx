@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 type NoteColor = 'white' | 'blue' | 'yellow' | 'green' | 'pink';
 
@@ -32,6 +32,10 @@ export default function ProfilePage() {
   const [isEditingBanner, setIsEditingBanner] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Refs for maintaining cursor position
+  const aboutIntroRef = useRef<HTMLTextAreaElement>(null);
+  const aboutDescriptionRef = useRef<HTMLTextAreaElement>(null);
+  const bannerTextRef = useRef<HTMLTextAreaElement>(null);
   
   // Form data states with default values
   const [formData, setFormData] = useState({
@@ -140,7 +144,6 @@ export default function ProfilePage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-
   };
 
   const handleAboutChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -483,6 +486,7 @@ export default function ProfilePage() {
                   Banner Text (Highlight with *asterisks*)
                 </label>
                 <textarea
+                  ref={bannerTextRef}
                   value={editText}
                   onChange={handleTextChange}
                   maxLength={MAX_LENGTH}
@@ -630,6 +634,7 @@ export default function ProfilePage() {
                 Introduction
               </label>
               <textarea
+                ref={aboutIntroRef}
                 name="intro"
                 value={aboutMe.intro}
                 onChange={handleAboutChange}
@@ -641,6 +646,7 @@ export default function ProfilePage() {
                 Description
               </label>
               <textarea
+                ref={aboutDescriptionRef}
                 name="description"
                 value={aboutMe.description}
                 onChange={handleAboutChange}
@@ -888,6 +894,13 @@ export default function ProfilePage() {
                 className="w-full px-4 py-2 border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition"
               >
                 Edit Profile Details
+              </button>
+
+              <button
+                onClick={() => (window.location.href = "/purchases")}
+                className="w-full px-4 py-2 border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition"
+              >
+                Purchase Pro Plan
               </button>
             </div>
           </div>

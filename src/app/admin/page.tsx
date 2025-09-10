@@ -285,94 +285,6 @@ export default function AdminDashboard() {
       </div>
     );
   }
-
-  // Tab components
-  const OverviewTab = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Stats Cards */}
-        {dashboardStats && (
-          <>
-            <StatCard 
-              icon={<Users className="h-6 w-6" />}
-              title="Total Users"
-              value={dashboardStats.total_users}
-              change={`${dashboardStats.new_users_7d} new (7d)`}
-            />
-            <StatCard 
-              icon={<Activity className="h-6 w-6" />}
-              title="Active Users"
-              value={dashboardStats.daily_active_users}
-              change={`${dashboardStats.weekly_active_users} weekly`}
-            />
-            <StatCard 
-              icon={<CreditCard className="h-6 w-6" />}
-              title="Revenue"
-              value={`$${dashboardStats.monthly_revenue}`}
-              change="Monthly"
-            />
-            <StatCard 
-              icon={<TrendingUp className="h-6 w-6" />}
-              title="Conversion"
-              value={`${dashboardStats.conversion_rate}%`}
-              change="Pro users"
-            />
-          </>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Activity */}
-        <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium">Recent Activity</h3>
-            <button onClick={handleRefresh} className="text-gray-500 hover:text-gray-700">
-              <RefreshCw className="h-5 w-5" />
-            </button>
-          </div>
-          <div className="space-y-4">
-            {activityLogs.length > 0 ? (
-              activityLogs.map((log, index) => (
-                <ActivityItem key={index} log={log} />
-              ))
-            ) : (
-              <p className="text-gray-500 text-center py-4">No recent activity</p>
-            )}
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="bg-white rounded-lg shadow p-6 space-y-6">
-          <h3 className="text-lg font-medium">Quick Stats</h3>
-          {dashboardStats && (
-            <div className="space-y-4">
-              <QuickStatItem 
-                icon={<Calendar className="h-5 w-5" />}
-                label="New Users (30d)"
-                value={dashboardStats.new_users_30d}
-              />
-              <QuickStatItem 
-                icon={<Clock className="h-5 w-5" />}
-                label="Avg. Study Goal"
-                value={`${dashboardStats.avg_study_goal} hrs/day`}
-              />
-              <QuickStatItem 
-                icon={<Star className="h-5 w-5" />}
-                label="Pro Users"
-                value={dashboardStats.pro_users}
-              />
-              <QuickStatItem 
-                icon={<Activity className="h-5 w-5" />}
-                label="Today's Events"
-                value={dashboardStats.events_today}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
 const UsersTab = () => {
   // Add this function to handle manual role upgrade
   const handleUpgradeToPro = async (user: User) => {
@@ -1144,7 +1056,7 @@ const SubscriptionsTab = () => {
       <div className="bg-white shadow-sm flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
-            {(['overview', 'users', 'subscriptions', 'engagement'] as const).map((tab) => (
+            {(['users', 'subscriptions', 'engagement'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -1175,7 +1087,6 @@ const SubscriptionsTab = () => {
         )}
         
         <div className="min-h-[600px]">
-          {activeTab === 'overview' && <OverviewTab />}
           {activeTab === 'users' && <UsersTab />}
           {activeTab === 'subscriptions' && <SubscriptionsTab />}
           {activeTab === 'engagement' && <EngagementTab />}

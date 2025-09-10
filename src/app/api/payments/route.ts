@@ -112,6 +112,22 @@ export async function POST(req: Request) {
         );
       }
 
+
+      await connection.execute<ResultSetHeader>(
+  `INSERT INTO notifications 
+   (user_id, title, message, type, status, purchase_status, created_at)
+   VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+  [
+    numericUserId,
+    "Payment Submitted",
+    `Your payment of $${numericAmount.toFixed(2)} for ${numericMonths} month(s) is under review.`,
+    "payment",
+    "unread",
+    "pending",
+  ]
+);
+
+
       // Commit transaction
       await connection.commit();
 

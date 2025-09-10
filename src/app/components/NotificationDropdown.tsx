@@ -1,4 +1,3 @@
-// src/components/NotificationDropdown.tsx
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -11,6 +10,7 @@ interface Notification {
   status: string;
   created_at: string;
   purchase_status?: string;
+  link?: string;
 }
 
 interface NotificationDropdownProps {
@@ -18,7 +18,10 @@ interface NotificationDropdownProps {
   updateUnreadCount: (count: number | ((prev: number) => number)) => void;
 }
 
-export default function NotificationDropdown({ onClose, updateUnreadCount }: NotificationDropdownProps) {
+export default function NotificationDropdown({
+  onClose,
+  updateUnreadCount,
+}: NotificationDropdownProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,7 +35,9 @@ export default function NotificationDropdown({ onClose, updateUnreadCount }: Not
         if (!response.ok) throw new Error("Failed to fetch notifications");
         const data = await response.json();
         setNotifications(data);
-        updateUnreadCount(data.filter((n: Notification) => n.status === "unread").length);
+        updateUnreadCount(
+          data.filter((n: Notification) => n.status === "unread").length
+        );
       } catch (error) {
         console.error("Error fetching notifications:", error);
       } finally {
@@ -47,20 +52,30 @@ export default function NotificationDropdown({ onClose, updateUnreadCount }: Not
     try {
       await fetch("/api/notifications", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notificationId }),
         credentials: "include",
       });
-      setNotifications(prev =>
-        prev.map(n =>
+
+      setNotifications((prev) =>
+        prev.map((n) =>
           n.notification_id === notificationId ? { ...n, status: "read" } : n
         )
       );
-      updateUnreadCount((prev: number) => prev - 1);
+
+      // only decrement if it was unread
+      updateUnreadCount((prev: number) =>
+        prev > 0 ? prev - 1 : 0
+      );
     } catch (error) {
       console.error("Error marking notification as read:", error);
+    }
+  };
+
+  const handleNotificationClick = (n: Notification) => {
+    markAsRead(n.notification_id);
+    if (n.link) {
+      window.location.href = n.link; // redirect if notification has a link
     }
   };
 
@@ -78,54 +93,59 @@ export default function NotificationDropdown({ onClose, updateUnreadCount }: Not
   };
 
   return (
-    <div 
+    <div
       className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden z-50 border border-gray-200"
       onClick={(e) => e.stopPropagation()}
     >
+      {/* Header */}
       <div className="p-4 border-b border-gray-200 bg-indigo-50">
         <h3 className="text-lg font-medium text-indigo-800">Notifications</h3>
       </div>
+
+      {/* Body */}
       <div className="max-h-96 overflow-y-auto">
         {isLoading ? (
-          <div className="p-4 text-center text-gray-500">Loading notifications...</div>
+          <div className="p-4 text-center text-gray-500 animate-pulse">
+            Loading notifications...
+          </div>
         ) : notifications.length === 0 ? (
-          <div className="p-4 text-center text-gray-500">No notifications yet</div>
+          <div className="p-6 text-center text-gray-500">
+            📭 No notifications yet
+          </div>
         ) : (
-          notifications.map(notification => (
+          notifications.map((n) => (
             <div
-              key={notification.notification_id}
-              className={`p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
-                notification.status === "unread" ? "bg-blue-50" : ""
+              key={n.notification_id}
+              className={`p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition ${
+                n.status === "unread" ? "bg-blue-50" : ""
               }`}
-              onClick={() => markAsRead(notification.notification_id)}
+              onClick={() => handleNotificationClick(n)}
             >
               <div className="flex justify-between items-start">
-                <h4 className="font-medium text-gray-900">
-                  {notification.title}
-                </h4>
-                {notification.purchase_status && (
+                <h4 className="font-medium text-gray-900">{n.title}</h4>
+                {n.purchase_status && (
                   <span
                     className={`text-xs px-2 py-1 rounded-full ${getStatusColor(
-                      notification.purchase_status
+                      n.purchase_status
                     )}`}
                   >
-                    {notification.purchase_status}
+                    {n.purchase_status}
                   </span>
                 )}
               </div>
-              <p className="text-sm text-gray-600 mt-1">
-                {notification.message}
-              </p>
+              <p className="text-sm text-gray-600 mt-1">{n.message}</p>
               <p className="text-xs text-gray-400 mt-2">
-                {new Date(notification.created_at).toLocaleString()}
+                {new Date(n.created_at).toLocaleString()}
               </p>
             </div>
           ))
         )}
       </div>
+
+      {/* Footer */}
       <div className="p-2 border-t border-gray-200 text-center bg-gray-50">
-        <Link 
-          href="/notifications" 
+        <Link
+          href="/notifications"
           className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
           onClick={onClose}
         >

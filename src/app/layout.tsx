@@ -16,6 +16,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies();
   const role = cookieStore.get("role")?.value as UserRole | undefined;
   const userRole = role ?? UserRole.BASIC;
+  const isAdminPage = false; 
 
   return (
     <html lang="en" className={workSans.variable}>

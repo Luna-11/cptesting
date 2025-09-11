@@ -287,6 +287,29 @@ export default function AdminDashboard() {
   }
 const UsersTab = () => {
   // Add this function to handle manual role upgrade
+
+  const handleDowngradeToUser = async (user: User) => {
+  try {
+    const response = await fetchWithAuth('/api/admin/users', {
+      method: 'PUT',
+      body: JSON.stringify({
+        userId: user.user_id,
+        role: 'user'
+      })
+    });
+
+    if (response.status === 'success') {
+      fetchUsers(pagination.page, searchTerm, filterStatus);
+      setError(null);
+    } else {
+      setError(response.error || 'Failed to downgrade user');
+    }
+  } catch (err) {
+    console.error('Failed to downgrade user:', err);
+    setError(err instanceof Error ? err.message : 'Failed to downgrade user');
+  }
+};
+
   const handleUpgradeToPro = async (user: User) => {
     try {
       const response = await fetchWithAuth('/api/admin/users', {

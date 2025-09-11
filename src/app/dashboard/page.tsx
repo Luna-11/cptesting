@@ -1,4 +1,5 @@
 "use client";
+import { useSession } from 'next-auth/react';
 
 import {
   LineChart,
@@ -11,6 +12,26 @@ import {
 } from "recharts";
 import Image from "next/image";
 import { useState, useEffect } from "react";
+
+// Define types for our data structures
+interface LoginData {
+  [key: string]: boolean;
+}
+
+interface CalendarDay {
+  day: number;
+  date: string;
+  hasLogin: boolean;
+  isToday: boolean;
+  isCurrentMonth: boolean;
+}
+
+interface WeatherData {
+  temp: number;
+  condition: string;
+  location: string;
+  icon: string;
+}
 
 const data = [
   { month: "Jan", study: 400, break: 200 },
@@ -27,23 +48,13 @@ const data = [
   { month: "Dec", study: 600, break: 350 },
 ];
 
-// Define types for our data structures
-interface LoginData {
-  [key: string]: boolean;
-}
-
-interface CalendarDay {
-  day: number;
-  date: string;
-  hasLogin: boolean;
-  isToday: boolean;
-}
-
 export default function DashboardPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loginStreaks, setLoginStreaks] = useState<LoginData>({});
   const [currentStreak, setCurrentStreak] = useState(0);
   const [userId, setUserId] = useState<number | null>(null);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Get userId from cookies
@@ -59,7 +70,59 @@ export default function DashboardPage() {
     const userIdFromCookie = getUserIdFromCookies();
     if (userIdFromCookie) {
       setUserId(userIdFromCookie);
+    } else {
+      // If no userId in cookies, set a default for testing
+      setUserId(1); // Change this to your actual user ID
     }
+
+    // Fetch weather data
+    const fetchWeather = async () => {
+      try {
+        // Using a free weather API - you might need to sign up for an API key
+        const response = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=16.8661&longitude=96.1951&current=temperature_2m,weather_code&timezone=Asia%2FRangoon`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          const weatherCodes = {
+            0: "Clear sky",
+            1: "Mainly clear",
+            2: "Partly cloudy",
+            3: "Overcast",
+            45: "Fog",
+            48: "Depositing rime fog",
+            51: "Light drizzle",
+            53: "Moderate drizzle",
+            55: "Dense drizzle",
+            61: "Slight rain",
+            63: "Moderate rain",
+            65: "Heavy rain",
+            80: "Slight rain showers",
+            81: "Moderate rain showers",
+            82: "Violent rain showers",
+          };
+          
+          setWeather({
+            temp: Math.round(data.current.temperature_2m),
+            condition: weatherCodes[data.current.weather_code as keyof typeof weatherCodes] || "Unknown",
+            location: "Yangon",
+            icon: data.current.weather_code === 0 ? "☀️" : "⛅",
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching weather:', error);
+        // Fallback weather data
+        setWeather({
+          temp: 28,
+          condition: "Sunny",
+          location: "Yangon",
+          icon: "☀️",
+        });
+      }
+    };
+
+    fetchWeather();
   }, []);
 
   useEffect(() => {
@@ -68,6 +131,7 @@ export default function DashboardPage() {
     // Record login and get streak data
     const recordLoginAndGetStreak = async () => {
       try {
+        setIsLoading(true);
         // Record login using POST method
         const loginResponse = await fetch('/api/streak', {
           method: 'POST',
@@ -98,6 +162,9 @@ export default function DashboardPage() {
         // Fallback: if API fails, at least show today as logged in
         const today = new Date().toISOString().split('T')[0];
         setLoginStreaks(prev => ({ ...prev, [today]: true }));
+        setCurrentStreak(1);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -105,7 +172,7 @@ export default function DashboardPage() {
   }, [userId]);
 
   // Generate calendar days for the current month - FIXED VERSION
-  const generateCalendarDays = (): (CalendarDay | null)[] => {
+  const generateCalendarDays = (): CalendarDay[] => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     
@@ -115,22 +182,55 @@ export default function DashboardPage() {
     const startDay = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
     const daysInMonth = lastDay.getDate();
     
-    const days: (CalendarDay | null)[] = [];
+    const days: CalendarDay[] = [];
     
     // Add empty cells for days before the first day of the month
-    // Sunday is 0, so we need to add the correct number of empty cells
     for (let i = 0; i < startDay; i++) {
-      days.push(null);
+      const prevMonthLastDay = new Date(year, month, 0).getDate();
+      const day = prevMonthLastDay - (startDay - i - 1);
+      const prevMonth = month === 0 ? 11 : month - 1;
+      const prevYear = month === 0 ? year - 1 : year;
+      
+      const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      
+      days.push({
+        day,
+        date: dateStr,
+        hasLogin: loginStreaks[dateStr] || false,
+        isToday: false,
+        isCurrentMonth: false,
+      });
     }
     
     // Add cells for each day of the month
+    const today = new Date();
     for (let i = 1; i <= daysInMonth; i++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
       days.push({
         day: i,
         date: dateStr,
         hasLogin: loginStreaks[dateStr] || false,
-        isToday: i === currentDate.getDate() && month === currentDate.getMonth() && year === currentDate.getFullYear()
+        isToday: i === today.getDate() && month === today.getMonth() && year === today.getFullYear(),
+        isCurrentMonth: true,
+      });
+    }
+    
+    // Add empty cells for days after the last day of the month
+    const totalCells = 42; // 6 rows x 7 columns
+    const remainingCells = totalCells - days.length;
+    
+    for (let i = 1; i <= remainingCells; i++) {
+      const nextMonth = month === 11 ? 0 : month + 1;
+      const nextYear = month === 11 ? year + 1 : year;
+      
+      const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      
+      days.push({
+        day: i,
+        date: dateStr,
+        hasLogin: loginStreaks[dateStr] || false,
+        isToday: false,
+        isCurrentMonth: false,
       });
     }
     
@@ -138,10 +238,6 @@ export default function DashboardPage() {
   };
 
   const calendarDays = generateCalendarDays();
-
-  // For debugging - check what dates are being generated
-  console.log('Calendar days:', calendarDays);
-  console.log('Login streaks:', loginStreaks);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#f0eeee] p-4">
@@ -226,19 +322,21 @@ export default function DashboardPage() {
                 </div>
               ))}
               {calendarDays.map((day, index) => (
-                day ? (
-                  <div
-                    key={index}
-                    className={`p-1 rounded relative flex items-center justify-center h-6 ${day.isToday ? "bg-[#3d312e] text-[#f0eeee]" : "text-[#3d312e]"}`}
-                  >
-                    <span>{day.day}</span>
-                    {day.hasLogin && (
-                      <span className="absolute -top-1 -right-1 text-xs text-yellow-400">🔥</span>
-                    )}
-                  </div>
-                ) : (
-                  <div key={index} className="p-1 h-6"></div>
-                )
+                <div
+                  key={index}
+                  className={`p-1 rounded relative flex items-center justify-center h-6 ${
+                    day.isToday 
+                      ? "bg-[#3d312e] text-[#f0eeee]" 
+                      : day.isCurrentMonth 
+                        ? "text-[#3d312e]" 
+                        : "text-gray-400"
+                  }`}
+                >
+                  <span>{day.day}</span>
+                  {day.hasLogin && (
+                    <span className="absolute -top-1 -right-1 text-xs text-yellow-400">🔥</span>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -246,15 +344,25 @@ export default function DashboardPage() {
           {/* Weather Widget - Fixed height */}
           <div className="bg-white rounded-2xl p-4 shadow-md h-[140px]">
             <h3 className="text-md font-semibold mb-1">Weather</h3>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-semibold">28°C</p>
-                <p className="text-xs text-[#3d312e]">Sunny</p>
+            {weather ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-semibold">{weather.temp}°C</p>
+                  <p className="text-xs text-[#3d312e]">{weather.condition}</p>
+                </div>
+                <div className="text-3xl">{weather.icon}</div>
               </div>
-              <div className="text-3xl">☀️</div>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-semibold">--°C</p>
+                  <p className="text-xs text-[#3d312e]">Loading...</p>
+                </div>
+                <div className="text-3xl">⏳</div>
+              </div>
+            )}
             <p className="text-xs text-gray-500 mt-1">
-              Yangon, MM — updated 10:30 AM
+              {weather ? `${weather.location}, MM — updated ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : 'Loading weather data...'}
             </p>
           </div>
         </div>

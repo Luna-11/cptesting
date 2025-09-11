@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@script/db';
+import { cookies } from 'next/headers';
 
 // Define types
 interface LoginData {
@@ -39,7 +40,8 @@ const calculateStreak = (loginDates: string[]): number => {
 // POST /api/streak - Record a login and return streak data
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await request.json();
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
 
     if (!userId) {
       return NextResponse.json(
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
         [userId]
       );
 
-      const loginDates = (allLogins as any[]).map(row => row.login_date);
+      const loginDates = (allLogins as any[]).map(row => row.login_date.toString());
       const currentStreak = calculateStreak(loginDates);
 
       return NextResponse.json({
@@ -88,7 +90,7 @@ export async function POST(request: NextRequest) {
       [userId]
     );
 
-    const loginDates = (allLogins as any[]).map(row => row.login_date);
+    const loginDates = (allLogins as any[]).map(row => row.login_date.toString());
     const currentStreak = calculateStreak(loginDates);
 
     return NextResponse.json({
@@ -106,11 +108,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-
+// GET /api/streak - Get streak data
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
 
     if (!userId) {
       return NextResponse.json(
@@ -136,7 +138,9 @@ export async function GET(request: NextRequest) {
 
     const loginHistory: LoginData = {};
     (monthLogins as any[]).forEach(row => {
-      loginHistory[row.login_date] = true;
+      // Convert date to string format YYYY-MM-DD
+      const dateStr = new Date(row.login_date).toISOString().split('T')[0];
+      loginHistory[dateStr] = true;
     });
 
     // Get current streak
@@ -145,7 +149,7 @@ export async function GET(request: NextRequest) {
       [userId]
     );
 
-    const loginDates = (allLogins as any[]).map(row => row.login_date);
+    const loginDates = (allLogins as any[]).map(row => row.login_date.toString());
     const currentStreak = calculateStreak(loginDates);
 
     return NextResponse.json({

@@ -241,7 +241,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#f0eeee] p-4">
-      {/* Info Banner*/}
+      {/* Info Banner with Subscription Alert */}
       <div className="bg-[#3d312e] text-[#f0eeee] rounded-2xl p-6 mb-6 flex justify-between items-center">
         <div className="max-w-[70%]">
           <h2 className="text-xl font-semibold">Hello Mr Smith!</h2>
@@ -264,6 +264,12 @@ export default function DashboardPage() {
             height={144}
             className="rounded-xl object-contain"
           />
+        </div>
+        <div className="bg-[#f5e8c7] text-[#3d312e] rounded-2xl p-4 shadow-lg flex items-center justify-center w-48 h-48 ml-4">
+          <div className="text-center">
+            <p className="text-sm">You have 5 days left on your subscription</p>
+            <button className="mt-2 bg-yellow-500 text-white px-4 py-2 rounded">Upgrade to Pro</button>
+          </div>
         </div>
       </div>
 

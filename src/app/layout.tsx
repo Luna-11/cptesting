@@ -12,18 +12,21 @@ const workSans = Work_Sans({
   variable: '--font-work-sans'
 });
 
-export default async function Layout({ children }: { children: ReactNode }) {
+interface LayoutProps {
+  children: ReactNode;
+}
+
+export default async function Layout({ children }: LayoutProps) {
   const cookieStore = await cookies();
   const role = cookieStore.get("role")?.value as UserRole | undefined;
   const userRole = role ?? UserRole.BASIC;
-  const isAdminPage = false; 
 
   return (
     <html lang="en" className={workSans.variable}>
       <body className="min-h-screen bg-background font-sans antialiased">
-          <AuthWrapper userRole={userRole}>
-            {children}
-          </AuthWrapper>
+        <AuthWrapper userRole={userRole}>
+          {children}
+        </AuthWrapper>
       </body>
     </html>
   );

@@ -1,6 +1,4 @@
 "use client";
-import { useSession } from 'next-auth/react';
-
 import {
   LineChart,
   Line,
@@ -26,14 +24,32 @@ interface CalendarDay {
   isCurrentMonth: boolean;
 }
 
-interface WeatherData {
-  temp: number;
-  condition: string;
-  location: string;
-  icon: string;
+interface UserData {
+  id: number;
+  username: string;
+  name: string;
+  email: string;
 }
 
-const data = [
+interface ChartData {
+  month: string;
+  study: number;
+  break: number;
+}
+
+interface SessionData {
+  type: string;
+  duration: number;
+  start_time: string;
+  subject_id: number;
+  id: number;
+  end_time: string;
+  break_type?: string;
+  notes?: string;
+}
+
+// Mock data as fallback
+const mockChartData = [
   { month: "Jan", study: 400, break: 200 },
   { month: "Feb", study: 300, break: 250 },
   { month: "Mar", study: 500, break: 300 },
@@ -53,125 +69,203 @@ export default function DashboardPage() {
   const [loginStreaks, setLoginStreaks] = useState<LoginData>({});
   const [currentStreak, setCurrentStreak] = useState(0);
   const [userId, setUserId] = useState<number | null>(null);
-  const [weather, setWeather] = useState<WeatherData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [isChartLoading, setIsChartLoading] = useState(true);
+  const [hasSessionData, setHasSessionData] = useState(false);
+
+  // Function to process session data for the chart
+  const processSessionDataForChart = (sessions: any[]): ChartData[] => {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    
+    // Initialize data structure for all months
+    const monthlyData: { [key: string]: { study: number; break: number } } = {};
+    
+    for (let i = 0; i < 12; i++) {
+      monthlyData[i] = { study: 0, break: 0 };
+    }
+
+    // Process each session
+    sessions.forEach(session => {
+      if (session.start_time || session.startTime) {
+        const startTime = session.start_time || session.startTime;
+        const date = new Date(startTime);
+        const month = date.getMonth(); // 0-11
+        
+        // Convert duration from seconds to minutes
+        const durationMinutes = Math.floor((session.duration || 0) / 60);
+        
+        const sessionType = session.type || (session.sessionType || 'study');
+        
+        if (sessionType === 'study' || sessionType === 'Study') {
+          monthlyData[month].study += durationMinutes;
+        } else if (sessionType === 'break' || sessionType === 'Break') {
+          monthlyData[month].break += durationMinutes;
+        }
+      }
+    });
+
+    // Check if there's any actual data (not just zeros)
+    const hasData = Object.values(monthlyData).some(month => month.study > 0 || month.break > 0);
+    setHasSessionData(hasData);
+
+    // Convert to the format needed for the chart
+    return monthNames.map((monthName, index) => ({
+      month: monthName,
+      study: monthlyData[index].study,
+      break: monthlyData[index].break
+    }));
+  };
 
   useEffect(() => {
-    // Get userId from cookies
+    // Fetch user data from the API
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/profile', {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          setUserData(userData.user || userData);
+        } else {
+          console.error('Failed to fetch user data');
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    // Helper to get userId from cookies
     const getUserIdFromCookies = () => {
       const cookieValue = document.cookie
         .split('; ')
         .find(row => row.startsWith('userId='))
         ?.split('=')[1];
-      
+
       return cookieValue ? parseInt(cookieValue) : null;
     };
 
     const userIdFromCookie = getUserIdFromCookies();
-    if (userIdFromCookie) {
-      setUserId(userIdFromCookie);
-    } else {
-      // If no userId in cookies, set a default for testing
-      setUserId(1); // Change this to your actual user ID
-    }
+    if (userIdFromCookie) setUserId(userIdFromCookie);
 
-    // Fetch weather data
-    const fetchWeather = async () => {
+    // Fetch session data and process it for the chart
+    const fetchSessionData = async () => {
       try {
-        // Using a free weather API - you might need to sign up for an API key
-        const response = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=16.8661&longitude=96.1951&current=temperature_2m,weather_code&timezone=Asia%2FRangoon`
-        );
+        console.log("Fetching study sessions...");
+        const response = await fetch('/api/studysessions?group_by_day=false', {
+          credentials: 'include',
+        });
         
-        if (response.ok) {
-          const data = await response.json();
-          const weatherCodes = {
-            0: "Clear sky",
-            1: "Mainly clear",
-            2: "Partly cloudy",
-            3: "Overcast",
-            45: "Fog",
-            48: "Depositing rime fog",
-            51: "Light drizzle",
-            53: "Moderate drizzle",
-            55: "Dense drizzle",
-            61: "Slight rain",
-            63: "Moderate rain",
-            65: "Heavy rain",
-            80: "Slight rain showers",
-            81: "Moderate rain showers",
-            82: "Violent rain showers",
-          };
-          
-          setWeather({
-            temp: Math.round(data.current.temperature_2m),
-            condition: weatherCodes[data.current.weather_code as keyof typeof weatherCodes] || "Unknown",
-            location: "Yangon",
-            icon: data.current.weather_code === 0 ? "☀️" : "⛅",
-          });
+        const result = await response.json();
+        
+        let sessions = [];
+        
+        // Handle different possible response structures
+        if (result.success && result.data) {
+          sessions = result.data;
+        } else if (Array.isArray(result)) {
+          sessions = result;
+        } else if (result.sessions) {
+          sessions = result.sessions;
+        } else if (result.studySessions) {
+          sessions = result.studySessions;
+        } else {
+          // Try to extract sessions from any other structure
+          sessions = Object.values(result).find((value: any) => Array.isArray(value)) || [];
+        }
+        
+        
+        if (sessions.length > 0) {
+          // Process the session data for the chart
+          const processedData = processSessionDataForChart(sessions);
+          console.log('Processed chart data:', processedData);
+          setChartData(processedData);
+        } else {
+          // Fallback to mock data if no sessions
+          console.log('No session data found, using mock data');
+          setChartData(mockChartData);
+          setHasSessionData(false);
         }
       } catch (error) {
-        console.error('Error fetching weather:', error);
-        // Fallback weather data
-        setWeather({
-          temp: 28,
-          condition: "Sunny",
-          location: "Yangon",
-          icon: "☀️",
-        });
+        console.error('Error fetching session data:', error);
+        setChartData(mockChartData);
+        setHasSessionData(false);
+      } finally {
+        setIsChartLoading(false);
       }
     };
 
-    fetchWeather();
-  }, []);
-
-  useEffect(() => {
-    if (!userId) return;
-
-    // Record login and get streak data
     const recordLoginAndGetStreak = async () => {
       try {
         setIsLoading(true);
-        // Record login using POST method
+
+        // Fetch user data first
+        await fetchUserData();
+
+        // Fetch session data for chart
+        await fetchSessionData();
+
+        // POST to record login
         const loginResponse = await fetch('/api/streak', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userId }),
+          credentials: 'include',
         });
 
+        if (loginResponse.status === 401) {
+          alert('Please log in to view your streak!');
+          window.location.href = '/login';
+          return;
+        }
+
         const loginData = await loginResponse.json();
-        
+        console.log('POST streak response:', loginData);
+
         if (loginData.success) {
           setCurrentStreak(loginData.currentStreak);
-          
-          // After recording login, get the updated login history
-          const historyResponse = await fetch(`/api/streak?userId=${userId}`);
+
+          const historyResponse = await fetch('/api/streak', {
+            credentials: 'include',
+          });
+
+          if (historyResponse.status === 401) {
+            alert('Please log in to view your streak!');
+            window.location.href = '/login';
+            return;
+          }
+
           const historyData = await historyResponse.json();
-          
+          console.log('GET streak response:', historyData);
+
           if (historyData.success) {
             setLoginStreaks(historyData.loginHistory);
+          } else {
+            console.error('Failed to fetch login history:', historyData.message);
           }
         } else {
-          console.error('Failed to record login:', loginData.message);
+          const historyResponse = await fetch('/api/streak', {
+            credentials: 'include',
+          });
+          
+          if (historyResponse.ok) {
+            const historyData = await historyResponse.json();
+            if (historyData.success) {
+              setLoginStreaks(historyData.loginHistory);
+              setCurrentStreak(historyData.currentStreak);
+            }
+          }
         }
       } catch (error) {
         console.error('Error with streak API:', error);
-        
-        // Fallback: if API fails, at least show today as logged in
-        const today = new Date().toISOString().split('T')[0];
-        setLoginStreaks(prev => ({ ...prev, [today]: true }));
-        setCurrentStreak(1);
       } finally {
         setIsLoading(false);
       }
     };
 
     recordLoginAndGetStreak();
-  }, [userId]);
+  }, []);
 
-  // Generate calendar days for the current month - FIXED VERSION
   const generateCalendarDays = (): CalendarDay[] => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -179,12 +273,11 @@ export default function DashboardPage() {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     
-    const startDay = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const startDay = firstDay.getDay(); 
     const daysInMonth = lastDay.getDate();
     
     const days: CalendarDay[] = [];
-    
-    // Add empty cells for days before the first day of the month
+
     for (let i = 0; i < startDay; i++) {
       const prevMonthLastDay = new Date(year, month, 0).getDate();
       const day = prevMonthLastDay - (startDay - i - 1);
@@ -201,8 +294,7 @@ export default function DashboardPage() {
         isCurrentMonth: false,
       });
     }
-    
-    // Add cells for each day of the month
+
     const today = new Date();
     for (let i = 1; i <= daysInMonth; i++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
@@ -215,7 +307,7 @@ export default function DashboardPage() {
       });
     }
     
-    // Add empty cells for days after the last day of the month
+
     const totalCells = 42; // 6 rows x 7 columns
     const remainingCells = totalCells - days.length;
     
@@ -244,7 +336,9 @@ export default function DashboardPage() {
       {/* Info Banner with Subscription Alert */}
       <div className="bg-[#3d312e] text-[#f0eeee] rounded-2xl p-6 mb-6 flex justify-between items-center">
         <div className="max-w-[70%]">
-          <h2 className="text-xl font-semibold">Hello Mr Smith!</h2>
+          <h2 className="text-xl font-semibold">
+            Hello {userData?.name || userData?.username || 'there'}!
+          </h2>
           <p className="text-lg mt-1">
             Today you have 9 new applications. Also you need to hire ROR
             Developer, React.JS Developer.
@@ -267,8 +361,8 @@ export default function DashboardPage() {
         </div>
         <div className="bg-[#f5e8c7] text-[#3d312e] rounded-2xl p-4 shadow-lg flex items-center justify-center w-48 h-48 ml-4">
           <div className="text-center">
-            <p className="text-sm">You have 5 days left on your subscription</p>
-            <button className="mt-2 bg-yellow-500 text-white px-4 py-2 rounded">Upgrade to Pro</button>
+            <p className="text-sm">For better features, buy our pro plan now</p>
+            <button className="mt-2 bg-yellow-500 text-white px-4 py-2 rounded" onClick={() => window.location.href = '/purchases'}>Upgrade to Pro</button>
           </div>
         </div>
       </div>
@@ -280,35 +374,62 @@ export default function DashboardPage() {
           <h3 className="text-lg font-semibold mb-2">
             Study & Break Sessions
           </h3>
-          <div className="w-full h-full min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart 
-                data={data}
-                margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+          {isChartLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-gray-500">Loading chart data...</div>
+            </div>
+          ) : !hasSessionData ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-4">
+              <div className="text-4xl mb-3">📚</div>
+              <p className="text-gray-600 font-medium mb-2">
+                Let's study together to record the progress!
+              </p>
+              <p className="text-sm text-gray-500">
+                Start a study session to see your progress visualized here
+              </p>
+              <button 
+                className="mt-4 bg-[#3d312e] text-white px-4 py-2 rounded-md hover:bg-[#2a211e] transition-colors"
+                onClick={() => window.location.href = '/studysession'}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
-                <XAxis dataKey="month" stroke="#3d312e" fontSize={12} />
-                <YAxis stroke="#3d312e" fontSize={12} />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="study"
-                  stroke="#3d312e"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="break"
-                  stroke="#bba2a2"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                Start Studying
+              </button>
+            </div>
+          ) : (
+            <div className="w-full h-full min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart 
+                  data={chartData}
+                  margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
+                  <XAxis dataKey="month" stroke="#3d312e" fontSize={12} />
+                  <YAxis stroke="#3d312e" fontSize={12} />
+                  <Tooltip 
+                    formatter={(value: number) => [`${value} min`, 'Duration']}
+                    labelFormatter={(label) => `Month: ${label}`}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="study"
+                    stroke="#3d312e"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 6 }}
+                    name="Study Time"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="break"
+                    stroke="#bba2a2"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 6 }}
+                    name="Break Time"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         {/* Right Sidebar - Fixed height to match chart */}
@@ -347,29 +468,26 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Weather Widget - Fixed height */}
-          <div className="bg-white rounded-2xl p-4 shadow-md h-[140px]">
-            <h3 className="text-md font-semibold mb-1">Weather</h3>
-            {weather ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-semibold">{weather.temp}°C</p>
-                  <p className="text-xs text-[#3d312e]">{weather.condition}</p>
-                </div>
-                <div className="text-3xl">{weather.icon}</div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-semibold">--°C</p>
-                  <p className="text-xs text-[#3d312e]">Loading...</p>
-                </div>
-                <div className="text-3xl">⏳</div>
-              </div>
-            )}
-            <p className="text-xs text-gray-500 mt-1">
-              {weather ? `${weather.location}, MM — updated ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : 'Loading weather data...'}
-            </p>
+          {/* Image/Text/Button Block - Replaces Weather Widget */}
+          <div className="bg-white rounded-2xl p-4 shadow-md h-[140px] flex items-center">
+            <div className="w-16 h-16 mr-4 flex-shrink-0">
+              <Image
+                src="/cat6.png"
+                alt="Are you ready to study?"
+                width={64}
+                height={64}
+                className="rounded-lg object-cover"
+              />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-md font-semibold mb-1">Study Tips</h3>
+              <p className="text-xs text-gray-600 mb-2">
+                Let's study at study session and make notes!
+              </p>
+              <button className="bg-[#3d312e] text-white text-xs px-3 py-1 rounded-md hover:bg-[#2a211e] transition-colors" onClick={() => window.location.href = '/studysession'}>
+                Start Studying
+              </button>
+            </div>
           </div>
         </div>
       </div>

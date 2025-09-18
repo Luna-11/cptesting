@@ -3,13 +3,8 @@ import { useState, useEffect } from "react";
 import { StarIcon as StarIconOutline } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { ArrowsUpDownIcon } from "@heroicons/react/24/outline";
-import { Work_Sans } from "next/font/google";
 
-const workSans = Work_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-work-sans",
-});
+
 
 type TaskStatus = "toStart" | "inProgress" | "done";
 
@@ -18,7 +13,7 @@ type Task = {
   user_id: number;
   task_name: string;
   status: TaskStatus;
-  important: boolean | number;
+  important: boolean;
   created_at: string;
   subject_id?: number | null;
   completed_at?: string | null;
@@ -32,240 +27,232 @@ export default function TaskBoard() {
   const [sortByNewest, setSortByNewest] = useState(true);
   const [showImportantOnly, setShowImportantOnly] = useState(false);
 
-  // Fetch tasks on component mount
+  // Fetch tasks on mount
   useEffect(() => {
     const fetchTasks = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        const response = await fetch('/api/todo');
-        
+
+        const response = await fetch("/api/todo");
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
-        if (!Array.isArray(data)) {
-          throw new Error('Invalid data format received from server');
+
+        if (!data || !Array.isArray(data.tasks)) {
+          throw new Error("Invalid data format received from server");
         }
-        
-        // Convert important from number to boolean and validate tasks
-        const validTasks = data.map(task => ({
-          ...task,
-          important: Boolean(task.important),
-          created_at: new Date(task.created_at).toISOString()
-        })).filter((task): task is Task => (
-          task &&
-          typeof task.task_id === 'number' &&
-          typeof task.task_name === 'string' &&
-          ['toStart', 'inProgress', 'done'].includes(task.status) &&
-          (typeof task.important === 'boolean' || typeof task.important === 'number') &&
-          typeof task.created_at === 'string'
-        ));
-        
+
+        // Convert important to boolean
+        const validTasks: Task[] = data.tasks
+          .map((task: any) => ({
+            ...task,
+            important: Boolean(task.important),
+            created_at: new Date(task.created_at).toISOString(),
+          }))
+          .filter(
+            (task: any) =>
+              task &&
+              typeof task.task_id === "number" &&
+              typeof task.task_name === "string" &&
+              ["toStart", "inProgress", "done"].includes(task.status) &&
+              typeof task.important === "boolean" &&
+              typeof task.created_at === "string"
+          );
+
         setTasks(validTasks);
       } catch (err) {
-        console.error('Failed to fetch tasks:', err);
-        setError('Failed to load tasks. Please try again later.');
+        console.error("Failed to fetch tasks:", err);
+        setError("Failed to load tasks. Please try again later.");
         setTasks([]);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchTasks();
   }, []);
 
   const handleAddTask = async () => {
     if (!taskInput.trim()) return;
-    
+
     try {
       setError(null);
-      const response = await fetch('/api/todo', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          task_name: taskInput
-        })
+      const response = await fetch("/api/todo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_name: taskInput }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const { data } = await response.json();
-      
-      if (!data || typeof data.task_id !== 'number') {
-        throw new Error('Invalid task data received');
+      if (!data || typeof data.task_id !== "number") {
+        throw new Error("Invalid task data received");
       }
-      
-      // Convert important to boolean for new task
-      const newTask = {
+
+      const newTask: Task = {
         ...data,
-        important: Boolean(data.important)
+        important: Boolean(data.important),
+        created_at: new Date(data.created_at).toISOString(),
       };
-      
-      setTasks(prev => [newTask, ...prev]);
+
+      setTasks((prev) => [newTask, ...prev]);
       setTaskInput("");
     } catch (err) {
-      console.error('Failed to add task:', err);
-      setError('Failed to add task. Please try again.');
+      console.error("Failed to add task:", err);
+      setError("Failed to add task. Please try again.");
     }
   };
 
   const handleStatusChange = async (taskId: number, newStatus: TaskStatus) => {
     try {
-      const taskToUpdate = tasks.find(t => t.task_id === taskId);
+      const taskToUpdate = tasks.find((t) => t.task_id === taskId);
       if (!taskToUpdate) return;
 
       const response = await fetch(`/api/todo/${taskId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           task_name: taskToUpdate.task_name,
           status: newStatus,
           subject_id: taskToUpdate.subject_id,
-          important: Boolean(taskToUpdate.important)
-        })
+          important: taskToUpdate.important,
+        }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const updatedTask = await response.json();
-      
-      setTasks(prev => prev.map(task => 
-        task.task_id === taskId ? {
-          ...updatedTask,
-          important: Boolean(updatedTask.important)
-        } : task
-      ));
+
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.task_id === taskId
+            ? { ...updatedTask, important: Boolean(updatedTask.important) }
+            : task
+        )
+      );
     } catch (err) {
-      console.error('Failed to update task:', err);
-      setError('Failed to update task status. Please try again.');
+      console.error("Failed to update task:", err);
+      setError("Failed to update task status. Please try again.");
     }
   };
 
   const toggleImportant = async (taskId: number) => {
     try {
-      const taskToUpdate = tasks.find(t => t.task_id === taskId);
+      const taskToUpdate = tasks.find((t) => t.task_id === taskId);
       if (!taskToUpdate) return;
 
       const newImportantStatus = !taskToUpdate.important;
-      
+
       const response = await fetch(`/api/todo/${taskId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           task_name: taskToUpdate.task_name,
           status: taskToUpdate.status,
-          important: newImportantStatus
-        })
+          important: newImportantStatus,
+        }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const updatedTask = await response.json();
-      
-      setTasks(prev => prev.map(task => 
-        task.task_id === taskId ? {
-          ...updatedTask,
-          important: Boolean(updatedTask.important)
-        } : task
-      ));
+
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.task_id === taskId
+            ? { ...updatedTask, important: Boolean(updatedTask.important) }
+            : task
+        )
+      );
     } catch (err) {
-      console.error('Failed to update task importance:', err);
-      setError('Failed to update task importance. Please try again.');
+      console.error("Failed to update task importance:", err);
+      setError("Failed to update task importance. Please try again.");
     }
   };
 
   const handleDeleteTask = async (taskId: number) => {
     try {
-      const response = await fetch(`/api/todo/${taskId}`, {
-        method: 'DELETE'
-      });
-      
+      const response = await fetch(`/api/todo/${taskId}`, { method: "DELETE" });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
-      setTasks(prev => prev.filter(task => task.task_id !== taskId));
+      setTasks((prev) => prev.filter((task) => task.task_id !== taskId));
     } catch (err) {
-      console.error('Failed to delete task:', err);
-      setError('Failed to delete task. Please try again.');
+      console.error("Failed to delete task:", err);
+      setError("Failed to delete task. Please try again.");
     }
   };
 
-  const toggleSort = () => {
-    setSortByNewest(!sortByNewest);
-  };
-
-  const toggleImportantFilter = () => {
-    setShowImportantOnly(!showImportantOnly);
-  };
+  const toggleSort = () => setSortByNewest(!sortByNewest);
+  const toggleImportantFilter = () => setShowImportantOnly(!showImportantOnly);
 
   const getStepFromStatus = (status: TaskStatus): number => {
     switch (status) {
-      case "toStart": return 1;
-      case "inProgress": return 2;
-      case "done": return 3;
-      default: return 1;
+      case "toStart":
+        return 1;
+      case "inProgress":
+        return 2;
+      case "done":
+        return 3;
+      default:
+        return 1;
     }
   };
 
-  // Process tasks for display
   const processedTasks = [...tasks]
     .sort((a, b) => {
       const dateA = new Date(a.created_at).getTime();
       const dateB = new Date(b.created_at).getTime();
       return sortByNewest ? dateB - dateA : dateA - dateB;
     })
-    .filter(task => !showImportantOnly || task.important);
+    .filter((task) => !showImportantOnly || task.important);
 
-  // Format today's date
   const today = new Date();
-  const formattedDate = today.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    month: 'long', 
-    day: 'numeric' 
+  const formattedDate = today.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
   });
 
   if (loading) {
     return (
-      <div className={`p-6 ${workSans.variable} font-sans flex justify-center items-center h-screen`}>
+      <div
+        className={`p-6 font-sans flex justify-center items-center h-screen`}
+      >
         <p>Loading tasks...</p>
       </div>
     );
   }
 
   return (
-    <div className={`p-6 ${workSans.variable} font-sans`}>
-      {/* Header section */}
+    <div className={`p-6 font-sans`}>
+      {/* Header */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
           <h1 className="text-2xl font-bold">My Day</h1>
           <div className="flex gap-4">
-            <button 
+            <button
               onClick={toggleSort}
               className="text-gray-500 flex items-center gap-1"
             >
               <ArrowsUpDownIcon className="w-5 h-5" />
               <span>Sort: {sortByNewest ? "Newest" : "Oldest"}</span>
             </button>
-            <button 
+            <button
               onClick={toggleImportantFilter}
-              className={`flex items-center gap-1 ${showImportantOnly ? 'text-yellow-400' : 'text-gray-500'}`}
+              className={`flex items-center gap-1 ${
+                showImportantOnly ? "text-yellow-400" : "text-gray-500"
+              }`}
             >
               {showImportantOnly ? (
                 <StarIconSolid className="w-5 h-5 text-yellow-400" />
@@ -279,20 +266,18 @@ export default function TaskBoard() {
         <p className="text-gray-500">{formattedDate}</p>
       </div>
 
-      {/* Error message */}
+      {/* Error */}
       {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-          {error}
-        </div>
+        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>
       )}
 
-      {/* Task input */}
+      {/* Input */}
       <div className="flex justify-end mb-4">
         <input
           type="text"
           value={taskInput}
           onChange={(e) => setTaskInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+          onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
           placeholder="Enter a task"
           className="border border-gray-300 rounded px-4 py-2 w-80 mr-2"
         />
@@ -305,11 +290,11 @@ export default function TaskBoard() {
         </button>
       </div>
 
-      {/* Tasks grid */}
+      {/* Tasks */}
       {processedTasks.length === 0 ? (
         <div className="text-center py-10 text-gray-500">
-          {showImportantOnly 
-            ? "No important tasks found" 
+          {showImportantOnly
+            ? "No important tasks found"
             : "No tasks found. Add a new task to get started!"}
         </div>
       ) : (
@@ -323,12 +308,16 @@ export default function TaskBoard() {
                   task.important ? "border-l-4 border-yellow-400" : ""
                 }`}
               >
-                {/* Task header */}
+                {/* Header */}
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <button 
+                    <button
                       onClick={() => toggleImportant(task.task_id)}
-                      aria-label={task.important ? "Mark as not important" : "Mark as important"}
+                      aria-label={
+                        task.important
+                          ? "Mark as not important"
+                          : "Mark as important"
+                      }
                     >
                       {task.important ? (
                         <StarIconSolid className="w-5 h-5 text-yellow-400" />
@@ -342,7 +331,10 @@ export default function TaskBoard() {
                     <select
                       value={task.status}
                       onChange={(e) =>
-                        handleStatusChange(task.task_id, e.target.value as TaskStatus)
+                        handleStatusChange(
+                          task.task_id,
+                          e.target.value as TaskStatus
+                        )
                       }
                       className="border border-gray-300 rounded px-2 py-1"
                     >
@@ -350,7 +342,7 @@ export default function TaskBoard() {
                       <option value="inProgress">In Progress</option>
                       <option value="done">Done</option>
                     </select>
-                    <button 
+                    <button
                       onClick={() => handleDeleteTask(task.task_id)}
                       className="text-red-500 hover:text-red-700"
                       aria-label="Delete task"
@@ -360,7 +352,7 @@ export default function TaskBoard() {
                   </div>
                 </div>
 
-                {/* Progress bar */}
+                {/* Progress */}
                 <div className="flex items-center gap-4 w-full">
                   {/* Step 1 */}
                   <div className="flex flex-col items-center">
@@ -369,13 +361,13 @@ export default function TaskBoard() {
                         currentStep === 1 ? "bg-pink-600" : "bg-gray-400"
                       }`}
                     >
-                      <img 
-                        src="/cat4.png" 
-                        alt="To Start" 
-                        className="w-full h-full object-contain" 
+                      <img
+                        src="/cat4.png"
+                        alt="To Start"
+                        className="w-full h-full object-contain"
                         onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/placeholder-task.png';
+                          (e.target as HTMLImageElement).src =
+                            "/placeholder-task.png";
                         }}
                       />
                     </div>
@@ -395,13 +387,13 @@ export default function TaskBoard() {
                         currentStep === 2 ? "bg-pink-600" : "bg-gray-400"
                       }`}
                     >
-                      <img 
-                        src="/cat2.png" 
-                        alt="In Progress" 
-                        className="w-full h-full object-contain" 
+                      <img
+                        src="/cat2.png"
+                        alt="In Progress"
+                        className="w-full h-full object-contain"
                         onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/placeholder-task.png';
+                          (e.target as HTMLImageElement).src =
+                            "/placeholder-task.png";
                         }}
                       />
                     </div>
@@ -421,13 +413,13 @@ export default function TaskBoard() {
                         currentStep === 3 ? "bg-pink-600" : "bg-gray-400"
                       }`}
                     >
-                      <img 
-                        src="/cat5.png" 
-                        alt="Done" 
-                        className="w-full h-full object-contain" 
+                      <img
+                        src="/cat5.png"
+                        alt="Done"
+                        className="w-full h-full object-contain"
                         onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/placeholder-task.png';
+                          (e.target as HTMLImageElement).src =
+                            "/placeholder-task.png";
                         }}
                       />
                     </div>

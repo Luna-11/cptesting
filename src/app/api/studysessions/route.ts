@@ -86,6 +86,7 @@ async function getTodaySameTypeBreakSession(
   );
   return sessions[0] || null;
 }
+
 export async function POST(request: Request) {
   const cookieStore = await cookies();
   const userId = cookieStore.get("userId")?.value;
@@ -195,13 +196,13 @@ export async function POST(request: Request) {
 
       if (existingSession) {
         if (sessionDuration === 0) {
-          // Notes-only update
+          // Notes-only update - REPLACE not concatenate
           await connection.query<ResultSetHeader>(
             `UPDATE study_sessions 
-             SET notes = COALESCE(?, notes),
+             SET notes = ?,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = ?`,
-            [requestData.notes || null, existingSession.id]
+            [requestData.notes || "", existingSession.id]
           );
 
           await connection.query("COMMIT");
@@ -213,18 +214,18 @@ export async function POST(request: Request) {
             totalDuration: existingSession.duration,
           });
         } else {
-          // Normal update (add duration + optional notes)
+          // Normal update (add duration) - REPLACE notes, not concatenate
           await connection.query<ResultSetHeader>(
             `UPDATE study_sessions 
              SET duration = duration + ?, 
                  end_time = GREATEST(end_time, ?),
-                 notes = COALESCE(?, notes),
+                 notes = ?,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = ?`,
             [
               sessionDuration,
               validateDateTime(requestData.end_time),
-              requestData.notes || null,
+              requestData.notes || "",
               existingSession.id,
             ]
           );

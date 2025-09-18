@@ -1,13 +1,24 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { Bell, LogOut } from 'lucide-react';
-import { 
-  Users, Activity, CreditCard, TrendingUp, Calendar,
-  Clock, Star, AlertCircle, CheckCircle, XCircle,
-  Search, Filter, Download, Eye, Edit, Trash2,ArrowDown,
-  BarChart3, PieChart, LineChart, RefreshCw
-} from 'lucide-react';
+import { useState, useEffect, useRef, MouseEvent } from 'react';
+import { Bell, LogOut, Users, Activity, CreditCard, TrendingUp, Calendar, Clock, Star, AlertCircle, CheckCircle, XCircle, Search, Filter, Download, Eye, Edit, Trash2, ArrowDown, BarChart3, PieChart, LineChart as LineChartIcon, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+
+interface MonthlyPurchase {
+  month: string;
+  total_months_purchased: number;
+  total_transactions: number;
+  total_revenue: number;
+}
 
 // Type definitions
 type UserRole = 'user' | 'pro' | 'admin';
@@ -31,12 +42,18 @@ interface User {
   daily_study_goal?: number;
 }
 
-interface ActivityLog {
-  type: 'event' | 'task';
+interface AdminNotification {
+  notification_id: number;
+  user_id: number;
+  payment_id: number;
+  title: string;
+  message: string;
+  type: string;
+  status: string;
+  purchase_status: string;
+  created_at: string;
   user_name: string;
   user_email: string;
-  activity: string;
-  timestamp: string;
   category: string;
 }
 
@@ -88,11 +105,72 @@ interface ApiResponse<T> {
   error?: string;
 }
 
+interface Payment {
+  payment_id: number;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  amount: number;
+  months: number;
+  method_name: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  payment_date: string;
+  approved_at: string | null;
+  receipt_image: string | null;
+}
+
+interface PaymentResponse {
+  payments: Payment[];
+  pagination: Pagination;
+}
+
+function EngagementPurchasesChart({ data }: { data: MonthlyPurchase[] }) {
+  return (
+    <div className="bg-white rounded-2xl shadow p-6">
+      <h2 className="text-xl font-semibold mb-4">Pro Plan Purchases & Revenue</h2>
+      <ResponsiveContainer width="100%" height={350}>
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+          <XAxis dataKey="month" />
+          <YAxis yAxisId="left" orientation="left" />
+          <YAxis yAxisId="right" orientation="right" />
+          <Tooltip />
+          <Legend />
+
+          {/* Line for purchased months */}
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="total_months_purchased"
+            stroke="#ff7300"
+            strokeWidth={3}
+            dot={{ r: 4 }}
+            activeDot={{ r: 6 }}
+            name="Purchased Months"
+          />
+
+          {/* Line for revenue */}
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="total_revenue"
+            stroke="#3874ff"
+            strokeWidth={3}
+            dot={{ r: 4 }}
+            activeDot={{ r: 6 }}
+            name="Revenue ($)"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'users' | 'subscriptions' | 'engagement'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | UserStatus>('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -108,6 +186,39 @@ export default function AdminDashboard() {
     hasPrev: false,
     hasNext: false
   });
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const [engagementData, setEngagementData] = useState<MonthlyPurchase[]>([]);
+
+  // Handle clicking outside to close notification dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside as any);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside as any);
+    };
+  }, []);
+
+  // Fetch engagement data
+  useEffect(() => {
+    const fetchEngagementData = async () => {
+      try {
+        const res = await fetch("/api/admin/analytics");
+        const json = await res.json();
+        if (json.status === "success") {
+          setEngagementData(json.data.engagementStats.monthlyPurchases);
+        }
+      } catch (err) {
+        console.error("Failed to fetch engagement data:", err);
+      }
+    };
+    fetchEngagementData();
+  }, []);
 
   // Improved fetch function with better error handling
   const fetchWithAuth = async <T,>(url: string, options: RequestInit = {}): Promise<ApiResponse<T>> => {
@@ -121,9 +232,13 @@ export default function AdminDashboard() {
         }
       });
 
-      const data: ApiResponse<T> = await response.json();
+      // Handle non-JSON responses
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error(`Expected JSON response but got ${contentType}`);
+      }
 
-      console.log('API Response:', { url, status: response.status, data });
+      const data: ApiResponse<T> = await response.json();
 
       if (response.status === 401 || response.status === 403) {
         setAuthError(true);
@@ -134,7 +249,6 @@ export default function AdminDashboard() {
         throw new Error(data.message || `Request failed with status ${response.status}`);
       }
 
-      // Handle cases where API might use 'status' instead of 'success'
       if (data.status === 'error') {
         throw new Error(data.message || 'API returned an error');
       }
@@ -142,12 +256,13 @@ export default function AdminDashboard() {
       return data;
     } catch (error) {
       console.error('Fetch error:', error);
-      setError(error instanceof Error ? error.message : 'An unknown error occurred');
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      setError(errorMessage);
       throw error;
     }
   };
 
-  // Fetch dashboard data with proper error handling
+  // Fetch dashboard data
   const fetchDashboardData = async () => {
     setLoading(true);
     setError(null);
@@ -155,7 +270,7 @@ export default function AdminDashboard() {
       const response = await fetchWithAuth<{
         userStats: Partial<DashboardStats>;
         engagementStats: Partial<DashboardStats>;
-        recentActivity: ActivityLog[];
+        recentActivity: AdminNotification[];
       }>('/api/admin/analytics');
 
       if (response.data) {
@@ -163,7 +278,7 @@ export default function AdminDashboard() {
           ...response.data.userStats,
           ...response.data.engagementStats,
         } as DashboardStats);
-        setActivityLogs(response.data.recentActivity || []);
+        setNotifications(response.data.recentActivity || []);
       } else {
         throw new Error('No data received from API');
       }
@@ -174,6 +289,30 @@ export default function AdminDashboard() {
       setLoading(false);
     }
   };
+
+  // Fetch admin notifications
+  const fetchAdminNotifications = async () => {
+    try {
+      const response = await fetchWithAuth<AdminNotification[]>('/api/admin/notification');
+      if (response.data) {
+        setNotifications(response.data);
+      }
+    } catch (err) {
+      console.error('Notifications fetch error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch notifications');
+    }
+  };
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const res = await fetch("/api/admin/analytics");
+      const json = await res.json();
+      if (json.status === "success") {
+        setDashboardStats(json.data.userStats); // ✅ use userStats
+      }
+    };
+    fetchStats();
+  }, []);
 
   // Fetch users data with pagination and filtering
   const fetchUsers = async (page = 1, search = '', status: 'all' | UserStatus = 'all') => {
@@ -194,21 +333,17 @@ export default function AdminDashboard() {
 
       if (response.data) {
         setUsers(response.data.users || []);
-        setPagination({
-          ...(response.data.pagination || {
-            page,
-            limit: pagination.limit,
-            total: 0,
-            totalPages: 0,
-            hasPrev: false,
-            hasNext: false
-          }),
-          hasPrev: page > 1,
-          hasNext: (response.data.pagination?.page || page) < (response.data.pagination?.totalPages || 0)
-        });
+        if (response.data.pagination) {
+          setPagination({
+            ...response.data.pagination,
+            hasPrev: response.data.pagination.page > 1,
+            hasNext: response.data.pagination.page < response.data.pagination.totalPages
+          });
+        }
       }
     } catch (err) {
       console.error('Users fetch error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch users');
     } finally {
       setLoading(false);
     }
@@ -220,9 +355,20 @@ export default function AdminDashboard() {
     fetchUsers();
   }, []);
 
-  // Refetch users when filters change
+  // Fetch notifications when dropdown is opened
   useEffect(() => {
-    fetchUsers(1, searchTerm, filterStatus);
+    if (showNotifications) {
+      fetchAdminNotifications();
+    }
+  }, [showNotifications]);
+
+  // Handle search and filter changes with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchUsers(1, searchTerm, filterStatus);
+    }, 500); // Debounce search by 500ms
+    
+    return () => clearTimeout(timer);
   }, [searchTerm, filterStatus]);
 
   // Handle user actions
@@ -307,27 +453,26 @@ export default function AdminDashboard() {
     };
 
     const handleDowngradeToUser = async (user: User) => {
-  try {
-    const response = await fetchWithAuth('/api/admin/users', {
-      method: 'PUT',
-      body: JSON.stringify({
-        userId: user.user_id,
-        role: 'user'
-      })
-    });
+      try {
+        const response = await fetchWithAuth('/api/admin/users', {
+          method: 'PUT',
+          body: JSON.stringify({
+            userId: user.user_id,
+            role: 'user'
+          })
+        });
 
-    if (response.status === 'success') {
-      fetchUsers(pagination.page, searchTerm, filterStatus);
-      setError(null);
-    } else {
-      setError(response.error || 'Failed to downgrade user');
-    }
-  } catch (err) {
-    console.error('Failed to downgrade user:', err);
-    setError(err instanceof Error ? err.message : 'Failed to downgrade user');
-  }
-};
-
+        if (response.status === 'success') {
+          fetchUsers(pagination.page, searchTerm, filterStatus);
+          setError(null);
+        } else {
+          setError(response.error || 'Failed to downgrade user');
+        }
+      } catch (err) {
+        console.error('Failed to downgrade user:', err);
+        setError(err instanceof Error ? err.message : 'Failed to downgrade user');
+      }
+    };
 
     return (
       <div className="space-y-6">
@@ -373,13 +518,13 @@ export default function AdminDashboard() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loading && users.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                       Loading users...
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                       No users found
                     </td>
                   </tr>
@@ -424,15 +569,14 @@ export default function AdminDashboard() {
                             </button>
                           )}
                           {(user.role === 'pro' || user.role === 'admin') && (
-                        <button 
-                          onClick={() => handleDowngradeToUser(user)}
-                          className="p-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
-                          title="Downgrade to User"
-                        >
-                          <ArrowDown className="h-4 w-4" />
-                        </button>
-                      )}
-
+                            <button 
+                              onClick={() => handleDowngradeToUser(user)}
+                              className="p-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                              title="Downgrade to User"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </button>
+                          )}
                           <button 
                             onClick={() => handleUserAction('suspend', user)}
                             className={`p-2 rounded transition-colors ${
@@ -466,14 +610,14 @@ export default function AdminDashboard() {
                 <button
                   onClick={() => fetchUsers(pagination.page - 1, searchTerm, filterStatus)}
                   disabled={!pagination.hasPrev}
-                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-[#3d312e] bg-white hover:bg-[#f0eeee]"
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-[#3d312e] bg-white hover:bg-[#f0eeee] disabled:opacity-50"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => fetchUsers(pagination.page + 1, searchTerm, filterStatus)}
                   disabled={!pagination.hasNext}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-[#3d312e] bg-white hover:bg-[#f0eeee]"
+                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-[#3d312e] bg-white hover:bg-[#f0eeee] disabled:opacity-50"
                 >
                   Next
                 </button>
@@ -494,7 +638,7 @@ export default function AdminDashboard() {
                       className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-[#3d312e] hover:bg-[#f0eeee] disabled:opacity-50"
                     >
                       <span className="sr-only">Previous</span>
-                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 20 20" fill="currentColor" aria-hidden="true">
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     </button>
@@ -527,7 +671,7 @@ export default function AdminDashboard() {
                     >
                       <span className="sr-only">Next</span>
                       <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 01-1.414 0z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                       </svg>
                     </button>
                   </nav>
@@ -541,19 +685,18 @@ export default function AdminDashboard() {
   };
 
   const SubscriptionsTab = () => {
-    const [payments, setPayments] = useState<any[]>([]);
+    const [payments, setPayments] = useState<Payment[]>([]);
     const [loadingPayments, setLoadingPayments] = useState(true);
     const [filterPaymentStatus, setFilterPaymentStatus] = useState<'all' | 'Pending' | 'Approved' | 'Rejected'>('all');
-    const [selectedPayment, setSelectedPayment] = useState<any>(null);
+    const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
     const [showDetailModal, setShowDetailModal] = useState(false);
 
-    const calculateDueDate = (payment: any) => {
+    const calculateDueDate = (payment: Payment) => {
       const baseDate = payment.approved_at ? new Date(payment.approved_at) : new Date(payment.payment_date);
       baseDate.setMonth(baseDate.getMonth() + payment.months);
       return baseDate.toLocaleDateString();
     };
-
 
     const fetchPayments = async (status = filterPaymentStatus) => {
       setLoadingPayments(true);
@@ -562,10 +705,9 @@ export default function AdminDashboard() {
           status: status === 'all' ? '' : status
         });
 
-        const response = await fetchWithAuth<{
-          payments: any[];
-          pagination: Pagination;
-        }>(`/api/admin/subscriptions?${params}`);
+        const response = await fetchWithAuth<PaymentResponse>(
+          `/api/admin/subscriptions?${params}`
+        );
 
         if (response.data) {
           setPayments(response.data.payments || []);
@@ -585,7 +727,7 @@ export default function AdminDashboard() {
           body: JSON.stringify({
             paymentId,
             action,
-            rejectionReason: action === 'reject' ? rejectionReason : undefined
+            ...(action === 'reject' && { rejectionReason })
           })
         });
 
@@ -594,6 +736,9 @@ export default function AdminDashboard() {
           setSelectedPayment(null);
           setRejectionReason('');
           setShowDetailModal(false);
+          setError(null);
+        } else {
+          setError(response.error || `Failed to ${action} payment`);
         }
       } catch (err) {
         console.error(`Failed to ${action} payment:`, err);
@@ -601,7 +746,7 @@ export default function AdminDashboard() {
       }
     };
 
-    const openPaymentDetail = (payment: any) => {
+    const openPaymentDetail = (payment: Payment) => {
       setSelectedPayment(payment);
       setShowDetailModal(true);
     };
@@ -612,7 +757,6 @@ export default function AdminDashboard() {
 
     return (
       <div className="space-y-6">
-
         <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-medium text-[#3d312e]">Payment Approvals</h3>
@@ -657,13 +801,13 @@ export default function AdminDashboard() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {loadingPayments ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                       Loading payments...
                     </td>
                   </tr>
                 ) : payments.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                       No payments found
                     </td>
                   </tr>
@@ -695,11 +839,14 @@ export default function AdminDashboard() {
                           {payment.status}
                         </span>
                       </td>
-                      
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(payment.payment_date).toLocaleDateString()}
                       </td>
-                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {payment.approved_at ? new Date(payment.approved_at).toLocaleDateString() : '-'}
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {calculateDueDate(payment)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -842,7 +989,7 @@ export default function AdminDashboard() {
                             View full image
                           </a>
                         </div>
-                    </div>
+                      </div>
                     ) : (
                       <div className="bg-gray-50 p-8 rounded-lg flex flex-col items-center justify-center text-gray-500">
                         <CreditCard className="h-12 w-12 mb-3" />
@@ -922,78 +1069,40 @@ export default function AdminDashboard() {
         />
       </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <h3 className="text-lg font-medium mb-4 text-[#3d312e]">Subscription Analytics</h3>
-          {dashboardStats ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <StatCard 
-                icon={<CreditCard className="h-6 w-6" />}
-                title="Monthly Revenue"
-                value={`$${dashboardStats.monthly_revenue}`}
-                change="Current month"
-              />
-              <StatCard 
-                icon={<Users className="h-6 w-6" />}
-                title="Pro Users"
-                value={dashboardStats.pro_users}
-                change={`${dashboardStats.conversion_rate}% conversion`}
-              />
-              <StatCard 
-                icon={<TrendingUp className="h-6 w-6" />}
-                title="Avg. Revenue per User"
-                value={`$${(dashboardStats.monthly_revenue / dashboardStats.total_users).toFixed(2)}`}
-                change="Monthly"
-              />
-            </div>
-          ) : (
-            <p className="text-gray-500">Loading subscription data...</p>
-          )}
-        </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <h3 className="text-lg font-medium mb-4 text-[#3d312e]">User Activity</h3>
-          {dashboardStats ? (
-            <div className="space-y-4">
-              <EngagementMetric
-                label="Daily Active Users"
-                value={dashboardStats.daily_active_users ?? 0}
-                total={dashboardStats.total_users ?? 0}
-              />
-              <EngagementMetric
-                label="Weekly Active Users"
-                value={dashboardStats.weekly_active_users ?? 0}
-                total={dashboardStats.total_users ?? 0}
-              />
-              <EngagementMetric
-                label="Monthly Active Users"
-                value={dashboardStats.monthly_active_users ?? 0}
-                total={dashboardStats.total_users ?? 0}
-              />
-            </div>
-          ) : (
-            <p className="text-gray-500">No engagement data available</p>
-          )}
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <h3 className="text-lg font-medium mb-4 text-[#3d312e]">Content Engagement</h3>
-          {dashboardStats ? (
-            <div className="space-y-4">
-              <EngagementMetric label="Total Events" value={dashboardStats.total_events ?? 0} />
-              <EngagementMetric label="Events Today" value={dashboardStats.events_today ?? 0} />
-              <EngagementMetric label="Total Tasks" value={dashboardStats.total_tasks ?? 0} />
-              <EngagementMetric label="Tasks Today" value={dashboardStats.tasks_today ?? 0} />
-            </div>
-          ) : (
-            <p className="text-gray-500">No content data available</p>
-          )}
-        </div>
+      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <h3 className="text-lg font-medium mb-4 text-[#3d312e]">Subscription Analytics</h3>
+        {dashboardStats ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <StatCard 
+              icon={<CreditCard className="h-6 w-6" />}
+              title="Monthly Revenue"
+              value={`$${dashboardStats.monthly_revenue}`}
+              change="Current month"
+            />
+            <StatCard 
+              icon={<Users className="h-6 w-6" />}
+              title="Pro Users"
+              value={dashboardStats.pro_users}
+              change={`${dashboardStats.conversion_rate}% conversion`}
+            />
+            <StatCard 
+              icon={<TrendingUp className="h-6 w-6" />}
+              title="Avg. Revenue per User"
+              value={`$${(dashboardStats.total_users > 0 
+                ? (dashboardStats.monthly_revenue / dashboardStats.total_users).toFixed(2) 
+                : 0)}`}
+              change="Monthly"
+            />
+          </div>
+        ) : (
+          <p>Loading...</p>
+        )}
       </div>
+
+      <EngagementPurchasesChart data={engagementData} />
     </div>
   );
 
-  // Helper components
   const StatCard = ({ icon, title, value, change }: { icon: React.ReactNode; title: string; value: string | number; change: string }) => (
     <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
       <div className="flex items-center justify-between">
@@ -1031,7 +1140,6 @@ export default function AdminDashboard() {
     </div>
   );
 
-  // Main render
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Header */}
@@ -1039,21 +1147,80 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-[#f0eeee]">Admin Dashboard</h1>
           <div className="flex items-center space-x-4">
-            {/* Notification Bell */}
-            <button 
-              className="p-2 rounded-full hover:bg-[#4a3c38] relative transition-colors"
-              title="Notifications"
-            >
-              <Bell className="h-5 w-5 text-[#f0eeee]" />
-              <span className="absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full"></span>
-            </button>
-            
+            {/* Notification Bell with Dropdown */}
+            <div className="relative" ref={notificationRef}>
+              <button
+                type="button"
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 rounded-full hover:bg-[#4a3c38] relative transition-colors"
+                title="Notifications"
+              >
+                <Bell className="h-5 w-5 text-[#f0eeee]" />
+                {notifications.length > 0 && (
+                  <span className="absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full"></span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl z-50 border border-gray-200 max-h-96 overflow-y-auto">
+                  <div className="p-4 border-b border-gray-200">
+                    <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {notifications.length > 0 ? (
+                      notifications.slice(0, 5).map((notification) => (
+                        <div key={notification.notification_id} className="p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              {notification.purchase_status === 'pending' ? (
+                                <CreditCard className="h-5 w-5 text-[#bba2a2]" />
+                              ) : (
+                                <Clock className="h-5 w-5 text-[#bba2a2]" />
+                              )}
+                            </div>
+                            <div className="ml-3 flex-1">
+                              <p className="text-sm font-medium text-gray-900">
+                                {notification.title}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {notification.message}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(notification.created_at).toLocaleString()}
+                              </p>
+                              <p className="text-xs text-gray-600">{notification.category}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-gray-500">
+                        No new notifications
+                      </div>
+                    )}
+                  </div>
+                  {notifications.length > 0 && (
+                    <div className="p-4 border-t border-gray-200">
+                      <Link
+                        href="/admin/notifications"
+                        className="w-full text-center block text-sm text-[#bba2a2] hover:text-[#a58d8d] font-medium"
+                        onClick={() => setShowNotifications(false)}
+                      >
+                        View all notifications
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Logout Button */}
             <button
+              type="button"
               onClick={() => {
                 fetch('/api/auth/logout', { method: 'POST' })
                   .then(() => window.location.href = '/login')
-                  .catch(err => console.error('Logout error:', err));
+                  .catch((err) => console.error('Logout error:', err));
               }}
               className="p-2 rounded-full hover:bg-[#4a3c38] transition-colors"
               title="Logout"

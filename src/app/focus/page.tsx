@@ -34,26 +34,33 @@ export default function BackgroundImageTimer() {
     { id: "waves", name: "Ocean Waves", url: "/wave.mp3" },
   ];
 
-  // Load settings from backend
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const response = await fetch("/api/focus-settings");
-        if (response.ok) {
-          const data = await response.json();
-          setFocusDuration(data.focus_duration);
-          setTime(data.focus_duration);
-          setIsProUser(data.is_pro_user);
-          setTempDuration(Math.floor(data.focus_duration / 60));
-          setSelectedMusic(data.selected_music || null);
-        }
-      } catch (error) {
-        console.error("Failed to load focus settings:", error);
-      }
-    };
+  // Save current focus time to backend
+  const saveFocusTime = async (isPause: boolean = false) => {
+    try {
+      const timeSpent = focusDuration - time;
+      if (timeSpent <= 0) return; // Don't save if no time was spent
 
-    loadSettings();
-  }, []);
+      const response = await fetch('/api/focus-time', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          focus_duration_seconds: timeSpent,
+          is_pause: isPause
+        }),
+      });
+      
+      if (response.ok) {
+        console.log('Focus time saved successfully!');
+        // Reset the timer after saving
+        setTime(focusDuration);
+        setIsRunning(false);
+      }
+    } catch (error) {
+      console.error('Failed to save focus time:', error);
+    }
+  };
 
   // Initialize audio element
   useEffect(() => {
@@ -104,6 +111,8 @@ export default function BackgroundImageTimer() {
             clearInterval(timerRef.current!);
             timerRef.current = null;
             setIsRunning(false);
+            // Auto-save when timer completes
+            saveFocusTime(false);
             return 0;
           }
           return prevTime - 1;
@@ -256,21 +265,27 @@ export default function BackgroundImageTimer() {
             {isRunning ? "Pause" : "Start"}
           </button>
           <button
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            onClick={() => saveFocusTime(false)}
+          >
+            Save
+          </button>
+          <button
             className="px-4 py-2 button2 text-white rounded-lg"
             onClick={restartTimer}
           >
             Restart
           </button>
-          <button
-            className="px-4 py-2 button2 text-white rounded-lg"
-            onClick={changeBackground}
-          >
-            Change BG
-          </button>
         </div>
 
         {/* Music Control */}
         <div className="mt-2 space-y-3">
+          <button
+            className='w-full bg-white px-4 py-2 rounded-lg flex items-center justify-center gap-2'
+            onClick={changeBackground}
+          >
+            Change BG
+          </button>
           {/* Play / Pause */}
           <button
             className={`w-full px-4 py-2 rounded-lg flex items-center justify-center gap-2 ${
@@ -326,46 +341,6 @@ export default function BackgroundImageTimer() {
           )}
         </div>
       </div>
-
-      {/* Duration Modal */}
-      {showDurationModal && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-80">
-            <h2 className="text-xl font-bold mb-4">Set Focus Duration</h2>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">
-                Duration: {tempDuration} minutes
-              </label>
-              <input
-                type="range"
-                min="5"
-                max="90"
-                value={tempDuration}
-                onChange={(e) => setTempDuration(parseInt(e.target.value))}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>5 min</span>
-                <span>90 min</span>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                className="px-4 py-2 bg-gray-300 rounded-lg"
-                onClick={() => setShowDurationModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg"
-                onClick={handleDurationChange}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Music Modal */}
       {showMusicModal && (

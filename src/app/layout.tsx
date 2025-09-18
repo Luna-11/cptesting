@@ -6,10 +6,12 @@ import AuthWrapper from "./components/AuthWrapper";
 import { UserRole } from "./components/Sidebar";
 import "./globals.css";
 
+// Configure Work Sans with both className and variable
 const workSans = Work_Sans({ 
   subsets: ["latin"], 
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-  variable: '--font-work-sans'
+  variable: "--font-work-sans",
+  display: "swap",   // optional but recommended
 });
 
 interface LayoutProps {
@@ -22,7 +24,7 @@ export default async function Layout({ children }: LayoutProps) {
   const userRole = role ?? UserRole.BASIC;
 
   return (
-    <html lang="en" className={workSans.variable}>
+    <html lang="en" className={`${workSans.variable} ${workSans.className}`}>
       <body className="min-h-screen bg-background font-sans antialiased">
         <AuthWrapper userRole={userRole}>
           {children}

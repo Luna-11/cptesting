@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const loggedIn = request.cookies.get('loggedIn')?.value;
-  const userRole = request.cookies.get('role')?.value;
+  const userRole = request.cookies.get('role')?.value; // 'admin' | 'pro' | 'user'
   const pathname = request.nextUrl.pathname;
 
   // Allow API routes, login and register without authentication
@@ -29,6 +29,8 @@ export function middleware(request: NextRequest) {
   if ((pathname === '/login' || pathname === '/register') && loggedIn) {
     if (userRole === 'admin') {
       return NextResponse.redirect(new URL('/Admin', request.url));
+    } else if (userRole === 'pro') {
+      return NextResponse.redirect(new URL('/proDashboard', request.url));
     } else {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
@@ -39,15 +41,33 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // Protect Dashboard routes - Only allow non-admin users
-  if (pathname.startsWith('/dashboard') && userRole === 'admin') {
-    return NextResponse.redirect(new URL('/Admin', request.url));
+  // Protect Dashboard routes - only allow regular users
+  if (pathname.startsWith('/dashboard') && userRole !== 'user') {
+    // block pro & admin
+    if (userRole === 'admin') {
+      return NextResponse.redirect(new URL('/Admin', request.url));
+    } else if (userRole === 'pro') {
+      return NextResponse.redirect(new URL('/proDashboard', request.url));
+    }
+  }
+
+  // Protect ProDashboard routes - only allow pro users
+  if (pathname.startsWith('/proDashboard') && userRole !== 'pro') {
+    if (userRole === 'admin') {
+      return NextResponse.redirect(new URL('/Admin', request.url));
+    } else if (userRole === 'user') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    } else {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
   }
 
   // If user is logged in and tries to access root page, redirect based on role
   if (pathname === '/' && loggedIn) {
     if (userRole === 'admin') {
       return NextResponse.redirect(new URL('/Admin', request.url));
+    } else if (userRole === 'pro') {
+      return NextResponse.redirect(new URL('/proDashboard', request.url));
     } else {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
@@ -55,9 +75,9 @@ export function middleware(request: NextRequest) {
 
   return NextResponse.next();
 }
+
 export const config = {
   matcher: [
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg$|png$|jpg$|jpeg$|gif$|webp$|ico$)).*)'
   ],
-
 };

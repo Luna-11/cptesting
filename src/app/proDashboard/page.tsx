@@ -1,370 +1,557 @@
 "use client";
-import { useSession } from 'next-auth/react';
 
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import Image from "next/image";
+import { Calendar, Clock, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
-
-// Define types for our data structures
-interface LoginData {
-  [key: string]: boolean;
-}
+import Link from "next/link";
 
 interface CalendarDay {
   day: number;
-  date: string;
-  hasLogin: boolean;
-  isToday: boolean;
   isCurrentMonth: boolean;
+  isToday: boolean;
+  hasLogin: boolean;
 }
 
-interface WeatherData {
-  temp: number;
-  condition: string;
-  location: string;
-  icon: string;
+interface UserData {
+  id: number;
+  username: string;
+  name: string;
+  email: string;
 }
 
-const data = [
-  { month: "Jan", study: 400, break: 200 },
-  { month: "Feb", study: 300, break: 250 },
-  { month: "Mar", study: 500, break: 300 },
-  { month: "Apr", study: 700, break: 400 },
-  { month: "May", study: 600, break: 450 },
-  { month: "Jun", study: 800, break: 500 },
-  { month: "Jul", study: 650, break: 700 },
-  { month: "Aug", study: 900, break: 600 },
-  { month: "Sep", study: 850, break: 550 },
-  { month: "Oct", study: 750, break: 400 },
-  { month: "Nov", study: 500, break: 300 },
-  { month: "Dec", study: 600, break: 350 },
-];
+interface CalendarEvent {
+  event_id: number;
+  event_name: string;
+  event_date: string;
+  event_time: string | null;
+  user_id: number;
+}
 
-export default function DashboardPage() {
+export default function Dashboard() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [loginStreaks, setLoginStreaks] = useState<LoginData>({});
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [userId, setUserId] = useState<number | null>(null);
-  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
+  const [streakInfo, setStreakInfo] = useState({ current: 0, longest: 0 });
+  const [loginHistory, setLoginHistory] = useState<{ [date: string]: boolean }>({});
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [todoCount, setTodoCount] = useState(0);
+  const [vocabularyCount, setVocabularyCount] = useState(0);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
 
   useEffect(() => {
-    // Get userId from cookies
-    const getUserIdFromCookies = () => {
-      const cookieValue = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('userId='))
-        ?.split('=')[1];
-      
-      return cookieValue ? parseInt(cookieValue) : null;
+    // Fetch user data from the API
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch("/api/profile", {
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUserData(userData.user || userData);
+        } else {
+          console.error("Failed to fetch user data");
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
     };
 
-    const userIdFromCookie = getUserIdFromCookies();
-    if (userIdFromCookie) {
-      setUserId(userIdFromCookie);
-    } else {
-      // If no userId in cookies, set a default for testing
-      setUserId(1); // Change this to your actual user ID
-    }
-
-    // Fetch weather data
-    const fetchWeather = async () => {
+    async function fetchLogins() {
       try {
-        // Using a free weather API - you might need to sign up for an API key
-        const response = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=16.8661&longitude=96.1951&current=temperature_2m,weather_code&timezone=Asia%2FRangoon`
-        );
-        
-        if (response.ok) {
-          const data = await response.json();
-          const weatherCodes = {
-            0: "Clear sky",
-            1: "Mainly clear",
-            2: "Partly cloudy",
-            3: "Overcast",
-            45: "Fog",
-            48: "Depositing rime fog",
-            51: "Light drizzle",
-            53: "Moderate drizzle",
-            55: "Dense drizzle",
-            61: "Slight rain",
-            63: "Moderate rain",
-            65: "Heavy rain",
-            80: "Slight rain showers",
-            81: "Moderate rain showers",
-            82: "Violent rain showers",
-          };
-          
-          setWeather({
-            temp: Math.round(data.current.temperature_2m),
-            condition: weatherCodes[data.current.weather_code as keyof typeof weatherCodes] || "Unknown",
-            location: "Yangon",
-            icon: data.current.weather_code === 0 ? "☀️" : "⛅",
+        setIsLoading(true);
+
+        await fetchUserData();
+
+        const res = await fetch("/api/streak");
+        const data = await res.json();
+
+        if (data.success) {
+          setLoginHistory(data.loginHistory);
+          setStreakInfo({
+            current: data.currentStreak || 0,
+            longest: data.longestStreak || 0,
           });
         }
       } catch (error) {
-        console.error('Error fetching weather:', error);
-        // Fallback weather data
-        setWeather({
-          temp: 28,
-          condition: "Sunny",
-          location: "Yangon",
-          icon: "☀️",
-        });
-      }
-    };
-
-    fetchWeather();
-  }, []);
-
-  useEffect(() => {
-    if (!userId) return;
-
-    // Record login and get streak data
-    const recordLoginAndGetStreak = async () => {
-      try {
-        setIsLoading(true);
-        // Record login using POST method
-        const loginResponse = await fetch('/api/streak', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userId }),
-        });
-
-        const loginData = await loginResponse.json();
-        
-        if (loginData.success) {
-          setCurrentStreak(loginData.currentStreak);
-          
-          // After recording login, get the updated login history
-          const historyResponse = await fetch(`/api/streak?userId=${userId}`);
-          const historyData = await historyResponse.json();
-          
-          if (historyData.success) {
-            setLoginStreaks(historyData.loginHistory);
-          }
-        } else {
-          console.error('Failed to record login:', loginData.message);
-        }
-      } catch (error) {
-        console.error('Error with streak API:', error);
-        
-        // Fallback: if API fails, at least show today as logged in
-        const today = new Date().toISOString().split('T')[0];
-        setLoginStreaks(prev => ({ ...prev, [today]: true }));
-        setCurrentStreak(1);
+        console.error("Error fetching data:", error);
       } finally {
         setIsLoading(false);
       }
-    };
+    }
 
-    recordLoginAndGetStreak();
-  }, [userId]);
+    fetchLogins();
+  }, []);
 
-  // Generate calendar days for the current month - FIXED VERSION
-  const generateCalendarDays = (): CalendarDay[] => {
+  useEffect(() => {
+    async function fetchTodoCount() {
+      try {
+        const res = await fetch("/api/todo", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+          const count =
+            Array.isArray(data) && data.length > 0
+              ? data[0].totalCount
+              : data.totalCount || 0;
+
+          setTodoCount(count);
+        }
+      } catch (err) {
+        console.error("Error fetching todo count:", err);
+      }
+    }
+
+    async function fetchVocabularyCount() {
+      try {
+        const res = await fetch("/api/vocabulary", { credentials: "include" });
+        if (res.ok) {
+          const data = await res.json();
+
+          let count = 0;
+
+          if (Array.isArray(data)) {
+            count = data.length;
+          } else if (typeof data === "object" && data !== null) {
+            if ("count" in data) {
+              count = data.count;
+            } else {
+              count = Object.keys(data).length;
+            }
+          }
+
+          setVocabularyCount(count);
+        }
+      } catch (err) {
+        console.error("Error fetching vocabulary count:", err);
+      }
+    }
+
+    async function fetchEvents() {
+      try {
+        setIsLoadingEvents(true);
+        const res = await fetch("/api/events", { 
+          credentials: "include",
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          
+          // Handle both array response and potential error response
+          if (Array.isArray(data)) {
+            setEvents(data);
+          } else if (data.error) {
+            console.error("API Error:", data.error);
+            setEvents([]);
+          } else {
+            console.error("Unexpected response format:", data);
+            setEvents([]);
+          }
+        } else {
+          console.error("Failed to fetch events:", res.status, res.statusText);
+          setEvents([]);
+        }
+      } catch (err) {
+        console.error("Error fetching events:", err);
+        setEvents([]);
+      } finally {
+        setIsLoadingEvents(false);
+      }
+    }
+
+    fetchTodoCount();
+    fetchVocabularyCount();
+    fetchEvents();
+  }, []);
+
+  function generateCalendarDays() {
+    const today = new Date();
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    
-    const startDay = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const daysInMonth = lastDay.getDate();
-    
-    const days: CalendarDay[] = [];
-    
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < startDay; i++) {
-      const prevMonthLastDay = new Date(year, month, 0).getDate();
-      const day = prevMonthLastDay - (startDay - i - 1);
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const daysArray: CalendarDay[] = [];
+
+    // Previous month filler
+    for (let i = 0; i < firstDay; i++) {
+      const prevMonthDay =
+        new Date(year, month, 0).getDate() - firstDay + i + 1;
       const prevMonth = month === 0 ? 11 : month - 1;
       const prevYear = month === 0 ? year - 1 : year;
-      
-      const dateStr = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      
-      days.push({
-        day,
-        date: dateStr,
-        hasLogin: loginStreaks[dateStr] || false,
-        isToday: false,
+      const dateKey = `${prevYear}-${String(prevMonth + 1).padStart(
+        2,
+        "0"
+      )}-${String(prevMonthDay).padStart(2, "0")}`;
+
+      daysArray.push({
+        day: prevMonthDay,
         isCurrentMonth: false,
+        isToday: false,
+        hasLogin: !!loginHistory[dateKey],
       });
     }
-    
-    // Add cells for each day of the month
-    const today = new Date();
+
+    // Current month days
     for (let i = 1; i <= daysInMonth; i++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-      days.push({
+      const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(
+        i
+      ).padStart(2, "0")}`;
+
+      daysArray.push({
         day: i,
-        date: dateStr,
-        hasLogin: loginStreaks[dateStr] || false,
-        isToday: i === today.getDate() && month === today.getMonth() && year === today.getFullYear(),
         isCurrentMonth: true,
+        isToday:
+          today.getDate() === i &&
+          today.getMonth() === month &&
+          today.getFullYear() === year,
+        hasLogin: !!loginHistory[dateKey],
       });
     }
-    
-    // Add empty cells for days after the last day of the month
-    const totalCells = 42; // 6 rows x 7 columns
-    const remainingCells = totalCells - days.length;
-    
-    for (let i = 1; i <= remainingCells; i++) {
+
+    // Next month filler
+    const totalCells = 42;
+    const nextMonthDays = totalCells - daysArray.length;
+    for (let i = 1; i <= nextMonthDays; i++) {
       const nextMonth = month === 11 ? 0 : month + 1;
       const nextYear = month === 11 ? year + 1 : year;
-      
-      const dateStr = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-      
-      days.push({
+      const dateKey = `${nextYear}-${String(nextMonth + 1).padStart(
+        2,
+        "0"
+      )}-${String(i).padStart(2, "0")}`;
+
+      daysArray.push({
         day: i,
-        date: dateStr,
-        hasLogin: loginStreaks[dateStr] || false,
-        isToday: false,
         isCurrentMonth: false,
+        isToday: false,
+        hasLogin: !!loginHistory[dateKey],
       });
     }
-    
-    return days;
+
+    setCalendarDays(daysArray);
+  }
+
+  useEffect(() => {
+    generateCalendarDays();
+  }, [currentDate, loginHistory]);
+
+  // Format event date for display
+  const formatEventDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    } catch (error) {
+      console.error("Error formatting date:", error, dateString);
+      return "Invalid date";
+    }
   };
 
-  const calendarDays = generateCalendarDays();
+  // Format event time for display
+  const formatEventTime = (timeString: string | null) => {
+    if (!timeString) return 'All day';
+    
+    try {
+      // If timeString is already in HH:MM format
+      if (timeString.match(/^\d{2}:\d{2}:\d{2}$/) || timeString.match(/^\d{2}:\d{2}$/)) {
+        const [hours, minutes] = timeString.split(':');
+        const date = new Date();
+        date.setHours(parseInt(hours), parseInt(minutes));
+        return date.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: true 
+        });
+      }
+      
+      // If it's a full datetime string
+      const date = new Date(timeString);
+      if (isNaN(date.getTime())) {
+        return 'Invalid time';
+      }
+      return date.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    } catch (error) {
+      console.error("Error formatting time:", error, timeString);
+      return 'Invalid time';
+    }
+  };
+
+  // Sort events by date for display
+  const sortedEvents = [...events].sort((a, b) => {
+    return new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
+  });
+
+  // Filter events to only show upcoming ones (today and future)
+  const upcomingEvents = sortedEvents.filter(event => {
+    const eventDate = new Date(event.event_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return eventDate >= today;
+  });
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#f0eeee] p-4">
-      {/* Info Banner*/}
-      <div className="bg-[#3d312e] text-[#f0eeee] rounded-2xl p-6 mb-6 flex justify-between items-center">
-        <div className="max-w-[70%]">
-          <h2 className="text-xl font-semibold">Hello Mr Smith!</h2>
-          <p className="text-lg mt-1">
-            Today you have 9 new applications. Also you need to hire ROR
-            Developer, React.JS Developer.
-          </p>
-          {currentStreak > 0 && (
-            <div className="flex items-center mt-2">
-              <span className="text-yellow-400 mr-1">🔥</span>
-              <span>Current streak: {currentStreak} days</span>
+    <div className="min-h-screen bg-[#f0eeee]">
+      <main className="p-6">
+        <div className="grid grid-cols-12 gap-6">
+          {/* Left Section */}
+          <div className="col-span-8">
+            {/* Welcome Section */}
+            <div className="bg-white border border-[#d1c7c7] rounded-lg shadow-sm">
+              <div className="p-6 flex items-center justify-between">
+                <div className="space-y-2">
+                  <h1 className="text-2xl font-bold text-[#3d312e]">
+                    Hello {userData?.name || userData?.username || "there"}!
+                  </h1>
+                  <p className="text-[#3d312e] max-w-md">
+                    I have assigned you a new Task. I want you to finish it by
+                    tomorrow evening.
+                  </p>
+                  <button className="mt-4 bg-[#3d312e] hover:bg-[#2a211f] text-white px-4 py-2 rounded-md text-sm font-medium">
+                    Review it
+                  </button>
+                </div>
+                <img
+                  src="/c3.png"
+                  alt="Person working at desk"
+                  className="h-32 w-40 object-contain"
+                />
+              </div>
             </div>
-          )}
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-4 mt-3">
+              <StatCard
+                title="My To Do List"
+                value={todoCount}
+                buttonLabel="View Details"
+                buttonHref="/todo"
+              />
+              <StatCard
+                title="My Vocabulary"
+                value={vocabularyCount}
+                buttonLabel="View Details"
+                buttonHref="/vocab"
+              />
+              <StatCard
+                title="Let's do our best!"
+                imageSrc="/bc.jpg"
+                isFullImage={true}
+              />
+            </div>
+
+            <div className="bg-[#fcf6f6] border border-[#d1c7c7] rounded-lg shadow-sm mt-4">
+              <div className="p-4 flex items-center space-x-6">
+                <img
+                  src="/std.jpg"
+                  alt="Person working at desk"
+                  className="h-42 w-52 object-contain"
+                />
+                <div>
+                  <h1 className="text-2xl font-bold text-[#3d312e]">
+                    Ready to study ?
+                  </h1>
+                  <p className="text-[#3d312e] max-w-md">
+                    Let's move to study session!
+                  </p>
+                  <button className="mt-4 bg-[#3d312e] hover:bg-[#2a211f] text-white px-4 py-2 rounded-md text-sm font-medium" onClick={() => window.location.href = '/studysession'}>
+                    Study Session
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="col-span-4 space-y-6">
+            {/* Calendar */}
+            <div className="bg-white border border-[#d1c7c7] rounded-lg shadow-sm">
+              <div className="p-6 pb-2 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-[#3d312e]">
+                  Study Calendar
+                </h3>
+                <span className="text-xs bg-[#3d312e] text-[#f0eeee] px-2 py-1 rounded-full">
+                  {currentDate.toLocaleString("default", {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
+              <div className="p-6 pt-2">
+                <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-[#3d312e] mb-2">
+                  {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+                    <div key={d} className="py-1">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {calendarDays.map((day, index) => (
+                    <div
+                      key={index}
+                      className={`p-1 rounded flex items-center justify-center h-8 text-sm relative ${
+                        day.isToday
+                          ? "bg-[#3d312e] text-[#f0eeee]"
+                          : day.isCurrentMonth
+                          ? "text-[#3d312e]"
+                          : "text-[#d1c7c7]"
+                      }`}
+                    >
+                      {day.day}
+                      {day.hasLogin && (
+                        <span className="absolute -top-1 -right-1 text-xs">
+                          🔥
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between mt-4 text-sm text-[#3d312e]">
+                  <span>🔥 Current Streak: {streakInfo.current} days</span>
+                  <span>🏆 Longest Streak: {streakInfo.longest} days</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Time & Events */}
+            <div className="bg-white border border-[#d1c7c7] rounded-lg shadow-sm">
+              <div className="p-6 pb-2 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-[#3d312e]">
+                  Upcoming Events
+                </h3>
+                <Link 
+                  href="/calendar" 
+                  className="text-[#3d312e] hover:text-[#2a211f]"
+                >
+                  <Plus className="h-5 w-5" />
+                </Link>
+              </div>
+              <div className="p-6 pt-2 space-y-3">
+                {isLoadingEvents ? (
+                  <div className="text-center py-4 text-[#3d312e]">
+                    Loading events...
+                  </div>
+                ) : upcomingEvents.length > 0 ? (
+                  upcomingEvents.slice(0, 3).map((event) => (
+                    <EventItem
+                      key={event.event_id}
+                      icon={<Calendar className="h-5 w-5 text-[#3d312e]" />}
+                      date={formatEventDate(event.event_date)}
+                      time={formatEventTime(event.event_time)}
+                      title={event.event_name}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-4">
+                    <img 
+                      src="/eve.png" 
+                      alt="No events" 
+                      className="h-36 w-44 mx-auto mb-2 opacity-70"
+                    />
+                    <p className="text-[#3d312e]">No Upcoming Events!</p>
+                  </div>
+                )}
+                
+                {upcomingEvents.length > 3 && (
+                  <div className="text-center pt-2">
+                    <Link 
+                      href="/calendar" 
+                      className="text-sm text-[#3d312e] hover:underline"
+                    >
+                      View all events ({upcomingEvents.length})
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="w-36 h-36 -mb-2 shrink-0">
-          <Image
-            src="/cat1.png"
-            alt="Cat"
-            width={144}
-            height={144}
-            className="rounded-xl object-contain"
-          />
-        </div>
+      </main>
+    </div>
+  );
+}
+
+interface StatCardProps {
+  title: string;
+  value?: string | number;
+  imageSrc?: string;
+  isFullImage?: boolean;
+  buttonLabel?: string;
+  buttonHref?: string;
+}
+
+function StatCard({
+  title,
+  value,
+  imageSrc,
+  isFullImage = false,
+  buttonLabel,
+  buttonHref,
+}: StatCardProps) {
+  return (
+    <div className="bg-white border border-[#d1c7c7] rounded-lg shadow-sm flex flex-col">
+      <div className="p-6 flex flex-col items-center space-y-3 flex-1">
+        {imageSrc && isFullImage ? (
+          <div className="w-full h-40 overflow-hidden rounded-md">
+            <img
+              src={imageSrc}
+              alt={title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : imageSrc ? (
+          <img src={imageSrc} alt={title} className="h-12 w-12 object-contain" />
+        ) : null}
+
+        <h3 className="font-semibold text-[#3d312e]">{title}</h3>
+
+        {!isFullImage && (
+          <div className="h-20 w-20 bg-[#f0eeee] rounded-full flex items-center justify-center">
+            <span className="text-2xl font-bold text-[#3d312e]">{value}</span>
+          </div>
+        )}
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1">
-        {/* Line Chart - Fixed height and reduced padding */}
-        <div className="bg-white rounded-2xl p-4 pb-2 shadow-md lg:col-span-2 flex flex-col h-[373px]">
-          <h3 className="text-lg font-semibold mb-2">
-            Study & Break Sessions
-          </h3>
-          <div className="w-full h-full min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart 
-                data={data}
-                margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
-                <XAxis dataKey="month" stroke="#3d312e" fontSize={12} />
-                <YAxis stroke="#3d312e" fontSize={12} />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="study"
-                  stroke="#3d312e"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="break"
-                  stroke="#bba2a2"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+      {buttonLabel && buttonHref && (
+        <div className="p-4">
+          <Link
+            href={buttonHref}
+            className="block text-center bg-[#3d312e] hover:bg-[#2a211f] text-white px-4 py-2 rounded-md text-sm font-medium"
+          >
+            {buttonLabel}
+          </Link>
         </div>
+      )}
+    </div>
+  );
+}
 
-        {/* Right Sidebar - Fixed height to match chart */}
-        <div className="flex flex-col gap-4 h-[360px]">
-          {/* Calendar */}
-          <div className="bg-white rounded-2xl p-4 shadow-md flex-1">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-md font-semibold">Calendar</h3>
-              <span className="text-xs bg-[#3d312e] text-[#f0eeee] px-2 py-1 rounded-full">
-                {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-              </span>
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-center text-xs">
-              {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-                <div key={d} className="font-semibold text-[#3d312e] py-1">
-                  {d}
-                </div>
-              ))}
-              {calendarDays.map((day, index) => (
-                <div
-                  key={index}
-                  className={`p-1 rounded relative flex items-center justify-center h-6 ${
-                    day.isToday 
-                      ? "bg-[#3d312e] text-[#f0eeee]" 
-                      : day.isCurrentMonth 
-                        ? "text-[#3d312e]" 
-                        : "text-gray-400"
-                  }`}
-                >
-                  <span>{day.day}</span>
-                  {day.hasLogin && (
-                    <span className="absolute -top-1 -right-1 text-xs text-yellow-400">🔥</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Weather Widget - Fixed height */}
-          <div className="bg-white rounded-2xl p-4 shadow-md h-[140px]">
-            <h3 className="text-md font-semibold mb-1">Weather</h3>
-            {weather ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-semibold">{weather.temp}°C</p>
-                  <p className="text-xs text-[#3d312e]">{weather.condition}</p>
-                </div>
-                <div className="text-3xl">{weather.icon}</div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-2xl font-semibold">--°C</p>
-                  <p className="text-xs text-[#3d312e]">Loading...</p>
-                </div>
-                <div className="text-3xl">⏳</div>
-              </div>
-            )}
-            <p className="text-xs text-gray-500 mt-1">
-              {weather ? `${weather.location}, MM — updated ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : 'Loading weather data...'}
-            </p>
-          </div>
+function EventItem({
+  icon,
+  date,
+  time,
+  title,
+}: {
+  icon: React.ReactNode;
+  date: string;
+  time: string;
+  title?: string;
+}) {
+  return (
+    <div className="flex items-center space-x-3 p-3 bg-[#f0eeee] rounded-lg">
+      {icon}
+      <div className="flex-1">
+        {title && <div className="text-sm font-medium text-[#3d312e]">{title}</div>}
+        <div className="text-xs text-[#3d312e]">
+          {date} • {time}
         </div>
       </div>
     </div>

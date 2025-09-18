@@ -431,18 +431,43 @@ export default function SubjectsPage() {
     setBreakType(null);
   }, []);
 
-  const handleSubjectSelect = useCallback((subject: Subject) => {
-    const validColor = getColorClass(subject.color);
-    setSelectedSubject({
-      ...subject,
-      color: validColor,
-    });
-    setNotes(subject.notes || "");
-    setNoteColor(validColor);
-    setTitle(subject.name.toUpperCase());
-    setDate(new Date().toLocaleDateString());
-    setError((prev) => ({ ...prev, general: "" }));
-  }, []);
+const handleSubjectSelect = useCallback(async (subject: Subject) => {
+  const validColor = getColorClass(subject.color);
+  
+  // Start with the subject's default notes
+  let initialNotes = subject.notes || "";
+
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    const response = await fetch(
+      `/api/studysessions?subject_id=${subject.id}&date=${today}&type=study` 
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      if (data.success && data.data.length > 0) {
+        // Use the most recent session's notes
+        const mostRecentSession = data.data[0];
+        initialNotes = mostRecentSession.notes || initialNotes;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to fetch today's session:", err);
+  }
+
+  setSelectedSubject({
+    ...subject,
+    color: validColor,
+  });
+
+  setNotes(initialNotes);
+  setNoteColor(validColor);
+  setTitle(subject.name.toUpperCase());
+  setDate(new Date().toLocaleDateString());
+  setError((prev) => ({ ...prev, general: "" }));
+}, []);
+
 
   const handleBackToSubjects = useCallback(() => {
     if (timerStartTime) {

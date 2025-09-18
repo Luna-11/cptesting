@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { db } from '@script/db';
 
+// Myanmar timezone offset (+6h30m = 390 minutes)
+const MYANMAR_OFFSET_MINUTES = 390;
+
+function toMyanmarDateString(date: Date): string {
+  const utc = date.getTime() + date.getTimezoneOffset() * 60000;
+  const mmTime = new Date(utc + MYANMAR_OFFSET_MINUTES * 60000);
+
+  const y = mmTime.getFullYear();
+  const m = String(mmTime.getMonth() + 1).padStart(2, "0");
+  const d = String(mmTime.getDate()).padStart(2, "0");
+
+  return `${y}-${m}-${d}`;
+}
+
 export async function POST(request: Request) {
   try {
     const { username, password } = await request.json();
@@ -42,6 +56,23 @@ export async function POST(request: Request) {
         3: 'pro'
       };
       const userRole = roleMap[user.role_id] || 'user';
+
+      // Record login streak with Myanmar timezone
+      const todayMyanmar = toMyanmarDateString(new Date());
+      
+      // Check if user already logged in today
+      const [existingStreak] = await db.execute(
+        'SELECT id FROM login_streaks WHERE user_id = ? AND login_date = ?',
+        [user.user_id, todayMyanmar]
+      );
+
+      // Only insert if not already logged in today
+      if ((existingStreak as any[]).length === 0) {
+        await db.execute(
+          'INSERT INTO login_streaks (user_id, login_date) VALUES (?, ?)',
+          [user.user_id, todayMyanmar]
+        );
+      }
 
       const response = NextResponse.json({
         success: true,

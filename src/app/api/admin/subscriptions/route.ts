@@ -18,6 +18,7 @@ interface PaymentRow extends RowDataPacket {
   receipt_image: string;
   status: string;
   payment_date: string;
+  processed_at: string | null;
 }
 
 interface UserRow extends RowDataPacket {
@@ -96,7 +97,8 @@ export async function GET(request: Request) {
         up.*,
         u.name as user_name,
         u.email as user_email,
-        pm.method_name
+        pm.method_name,
+        up.processed_at
        FROM user_payments up
        JOIN user u ON up.user_id = u.user_id
        JOIN payment_methods pm ON up.method_id = pm.method_id
@@ -106,7 +108,7 @@ export async function GET(request: Request) {
       [...queryParams, limit, offset]
     );
 
-    // Transform data for response - include receipt_image for display on the right side
+    // Transform data for response
     const transformedPayments = payments.map(payment => ({
       payment_id: payment.payment_id,
       user_id: payment.user_id,
@@ -116,8 +118,9 @@ export async function GET(request: Request) {
       status: payment.status,
       months: payment.months,
       amount: payment.amount,
-      receipt_image: payment.receipt_image, // This is the key field for the right side display
-      payment_date: payment.payment_date
+      receipt_image: payment.receipt_image,
+      payment_date: payment.payment_date,
+      approved_at: payment.processed_at 
     }));
 
     return NextResponse.json({
@@ -155,55 +158,41 @@ export async function POST(request: Request) {
   const connection = await db.getConnection();
   
   try {
-    // 1. Validate admin authentication using request headers
     const cookies = parseCookies(request);
     const adminId = cookies.userId;
     const role = cookies.role;
     
     if (!adminId || role !== 'admin') {
       return NextResponse.json(
-        { 
-          status: 'error',
-          error: "Unauthorized - Admin access required" 
-        },
+        { status: 'error', error: "Unauthorized - Admin access required" },
         { status: 401 }
       );
     }
 
-    // 2. Validate request body
     const body: SubscriptionActionRequest = await request.json();
     const { paymentId, action, rejectionReason } = body;
     
     if (!paymentId || !action) {
       return NextResponse.json(
-        { 
-          status: 'error',
-          error: "Payment ID and action are required" 
-        },
+        { status: 'error', error: "Payment ID and action are required" },
         { status: 400 }
       );
     }
 
     const numericPaymentId = Number(paymentId);
-    const numericAdminId = Number(adminId);
-
-    if (isNaN(numericPaymentId) || isNaN(numericAdminId)) {
+    if (isNaN(numericPaymentId)) {
       return NextResponse.json(
-        { 
-          status: 'error',
-          error: "Invalid numeric values" 
-        },
+        { status: 'error', error: "Invalid payment ID" },
         { status: 400 }
       );
     }
 
-    // Start transaction
     await connection.beginTransaction();
 
     try {
-      // 3. Get payment details and verify user exists
+      // 1. Get payment + user details
       const [payments] = await connection.execute<PaymentRow[]>(
-        `SELECT up.*, u.role_id
+        `SELECT up.*, u.name, u.email, u.role_id 
          FROM user_payments up
          JOIN user u ON up.user_id = u.user_id
          WHERE up.payment_id = ?`,
@@ -212,154 +201,77 @@ export async function POST(request: Request) {
 
       if (payments.length === 0) {
         await connection.rollback();
-        return NextResponse.json(
-          { 
-            status: 'error',
-            error: "Payment not found" 
-          },
-          { status: 404 }
-        );
+        return NextResponse.json({ status: 'error', error: "Payment not found" }, { status: 404 });
       }
 
       const payment = payments[0];
+      let newStatus = "";
+      let purchaseStatus = "";
 
-      // 4. Process based on action
-      if (action === 'approve') {
-        // Check if user_payments table has approval columns
-        const [columns] = await connection.execute<RowDataPacket[]>(
-          `SHOW COLUMNS FROM user_payments LIKE 'approved_by'`
+      // 2. Update payment status
+      if (action === "approve") {
+        newStatus = "Approved";
+        purchaseStatus = "approved";
+        await connection.execute<ResultSetHeader>(
+          `UPDATE user_payments SET status = ?, processed_at = NOW() WHERE payment_id = ?`,
+          [newStatus, numericPaymentId]
         );
 
-        if (columns.length > 0) {
-          // Table has approval columns, update with approval info
-          const [updateResult] = await connection.execute<ResultSetHeader>(
-            `UPDATE user_payments 
-             SET status = 'Approved', 
-                 approved_date = NOW(), 
-                 approved_by = ?,
-                 rejection_reason = NULL
-             WHERE payment_id = ?`,
-            [numericAdminId, numericPaymentId]
-          );
-
-          if (updateResult.affectedRows === 0) {
-            await connection.rollback();
-            return NextResponse.json(
-              { 
-                status: 'error',
-                error: "Failed to approve payment" 
-              },
-              { status: 500 }
-            );
-          }
-        } else {
-          // Table doesn't have approval columns, just update status
-          const [updateResult] = await connection.execute<ResultSetHeader>(
-            `UPDATE user_payments 
-             SET status = 'Approved'
-             WHERE payment_id = ?`,
-            [numericPaymentId]
-          );
-
-          if (updateResult.affectedRows === 0) {
-            await connection.rollback();
-            return NextResponse.json(
-              { 
-                status: 'error',
-                error: "Failed to approve payment" 
-              },
-              { status: 500 }
-            );
-          }
-        }
-
-        // Update user role to pro (role_id = 3)
-        const [userUpdateResult] = await connection.execute<ResultSetHeader>(
-          `UPDATE user 
-           SET role_id = 3
-           WHERE user_id = ?`,
+        // Upgrade user role to PRO (role_id = 3)
+        await connection.execute<ResultSetHeader>(
+          `UPDATE user SET role_id = 3 WHERE user_id = ?`,
           [payment.user_id]
         );
 
-        if (userUpdateResult.affectedRows === 0) {
-          await connection.rollback();
-          return NextResponse.json(
-            { 
-              status: 'error',
-              error: "Failed to update user role" 
-            },
-            { status: 500 }
-          );
-        }
-
-      } else if (action === 'reject') {
-        // Check if user_payments table has rejection columns
-        const [columns] = await connection.execute<RowDataPacket[]>(
-          `SHOW COLUMNS FROM user_payments LIKE 'rejection_reason'`
+      } else if (action === "reject") {
+        newStatus = "Rejected";
+        purchaseStatus = "rejected";
+        await connection.execute<ResultSetHeader>(
+          `UPDATE user_payments SET status = ?, processed_at = NOW() WHERE payment_id = ?`,
+          [newStatus, numericPaymentId]
         );
-
-        if (columns.length > 0) {
-          // Table has rejection columns, update with rejection info
-          const [updateResult] = await connection.execute<ResultSetHeader>(
-            `UPDATE user_payments 
-             SET status = 'Rejected', 
-                 rejection_reason = ?
-             WHERE payment_id = ?`,
-            [rejectionReason || 'Payment rejected by admin', numericPaymentId]
-          );
-
-          if (updateResult.affectedRows === 0) {
-            await connection.rollback();
-            return NextResponse.json(
-              { 
-                status: 'error',
-                error: "Failed to reject payment" 
-              },
-              { status: 500 }
-            );
-          }
-        } else {
-          // Table doesn't have rejection columns, just update status
-          const [updateResult] = await connection.execute<ResultSetHeader>(
-            `UPDATE user_payments 
-             SET status = 'Rejected'
-             WHERE payment_id = ?`,
-            [numericPaymentId]
-          );
-
-          if (updateResult.affectedRows === 0) {
-            await connection.rollback();
-            return NextResponse.json(
-              { 
-                status: 'error',
-                error: "Failed to reject payment" 
-              },
-              { status: 500 }
-            );
-          }
-        }
-
       } else {
         await connection.rollback();
         return NextResponse.json(
-          { 
-            status: 'error',
-            error: "Invalid action. Must be 'approve' or 'reject'" 
-          },
+          { status: 'error', error: "Invalid action. Must be 'approve' or 'reject'" },
           { status: 400 }
         );
       }
 
-      // Commit transaction
+      // 3. Insert notification for the user with correct status and purchase_status
+      const notifMessage =
+        newStatus === "Approved"
+          ? `🎉 Your subscription payment #${numericPaymentId} has been approved. You now have Pro access!`
+          : `❌ Your subscription payment #${numericPaymentId} has been rejected.${rejectionReason ? " Reason: " + rejectionReason : ""}`;
+
+      const notifTitle =
+        newStatus === "Approved"
+          ? "Subscription Approved"
+          : "Subscription Rejected";
+
+      await connection.execute(
+        `INSERT INTO notifications 
+          (user_id, payment_id, title, message, type, status, purchase_status, created_at)
+         VALUES (?, ?, ?, ?, 'user', 'unread', ?, NOW())`,
+        [
+          payment.user_id, 
+          numericPaymentId, 
+          notifTitle,
+          notifMessage, 
+          purchaseStatus
+        ]
+      );
+
       await connection.commit();
 
-      // Get updated payment details for response - including receipt_image
+      // 4. Get updated payment details for response
       const [updatedPayment] = await connection.execute<PaymentWithUser[]>(
         `SELECT 
           up.*,
           u.name as user_name,
           u.email as user_email,
-          pm.method_name
+          pm.method_name,
+          up.processed_at
          FROM user_payments up
          JOIN user u ON up.user_id = u.user_id
          JOIN payment_methods pm ON up.method_id = pm.method_id
@@ -368,20 +280,21 @@ export async function POST(request: Request) {
       );
 
       return NextResponse.json({
-        status: 'success',
-        message: `Payment ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
+        status: "success",
+        message: `Payment ${newStatus.toLowerCase()} successfully`,
         payment: {
           ...updatedPayment[0],
-          receipt_image: updatedPayment[0].receipt_image // Ensure receipt image is included
+          receipt_image: updatedPayment[0].receipt_image,
+          approved_at: updatedPayment[0].processed_at 
         }
       });
 
     } catch (innerError: any) {
       await connection.rollback();
-      console.error('Error in POST /api/admin/subscriptions transaction:', innerError);
+      console.error("Error in POST /api/admin/subscriptions transaction:", innerError);
       return NextResponse.json(
         { 
-          status: 'error',
+          status: "error", 
           error: `Failed to ${action} payment`,
           details: process.env.NODE_ENV === 'development' ? innerError.message : undefined
         },
@@ -389,11 +302,12 @@ export async function POST(request: Request) {
       );
     }
   } catch (error: any) {
-    console.error('Error in POST /api/admin/subscriptions:', error);
+    console.error("Error in POST /api/admin/subscriptions:", error);
     return NextResponse.json(
       { 
-        status: 'error',
-        error: "Payment processing failed"
+        status: "error", 
+        error: "Payment processing failed",
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
       },
       { status: 500 }
     );
@@ -401,3 +315,25 @@ export async function POST(request: Request) {
     connection.release();
   }
 }
+
+
+// Add other HTTP methods to prevent 405 errors
+// export async function PUT() {
+//   return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+// }
+
+// export async function DELETE() {
+//   return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+// }
+
+// export async function PATCH() {
+//   return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+// }
+
+// export async function HEAD() {
+//   return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+// }
+
+// export async function OPTIONS() {
+//   return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+// }

@@ -41,7 +41,7 @@ const PaymentPage = () => {
             status: payment.status,
             paymentMethod: payment.method_name,
             receiptUrl: payment.receipt_image 
-              ? `data:image/jpeg;base64,${payment.receipt_image}`
+              ? payment.receipt_image
               : undefined
           })));
         }
@@ -66,7 +66,7 @@ const PaymentPage = () => {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        setPreview(reader.result);
+        setPreview(reader.result); // This will be the full data URL with prefix
       }
     };
     reader.readAsDataURL(file);
@@ -79,9 +79,7 @@ const PaymentPage = () => {
     setUploadSuccess(false);
     
     try {
-      // Extract base64 data without the prefix
-      const base64Data = preview.split(',')[1];
-      
+      // Use the FULL base64 data URL (including the data:image/ prefix)
       const response = await fetch('/api/payments', {
         method: 'POST',
         headers: {
@@ -91,16 +89,41 @@ const PaymentPage = () => {
           methodId: selectedMethod === "KBZPay" ? 1 : 2,
           months: selectedMonths,
           amount: calculatePrice(selectedMonths),
-          receiptImage: base64Data
+          receiptImage: preview // Send the complete data URL
         }),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error(await response.text());
+        throw new Error(result.error || result.details || 'Payment failed');
       }
 
-      setUploadSuccess(true);
-      setPreview(""); // Clear preview after successful upload
+      if (result.success) {
+        setUploadSuccess(true);
+        setPreview(""); // Clear preview after successful upload
+        
+        // Refresh purchase history
+        const refreshResponse = await fetch('/api/payments');
+        const refreshData = await refreshResponse.json();
+        
+        if (refreshData.success) {
+          setPurchases(refreshData.payments.map((payment: any) => ({
+            id: payment.payment_id.toString(),
+            planName: `Pro Plan (${payment.months} month${payment.months > 1 ? 's' : ''})`,
+            months: payment.months,
+            amount: payment.amount,
+            date: payment.payment_date,
+            status: payment.status,
+            paymentMethod: payment.method_name,
+            receiptUrl: payment.receipt_image 
+              ? payment.receipt_image
+              : undefined
+          })));
+        }
+      } else {
+        throw new Error(result.error || 'Payment failed');
+      }
     } catch (error) {
       console.error('Payment error:', error);
       alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -200,11 +223,12 @@ const PaymentPage = () => {
             
             {preview ? (
               <div className="space-y-3">
-                <img
-                  src={preview}
-                  alt="Payment receipt"
-                  className="max-w-xs border border-[#bba2a2] rounded shadow-sm"
+                <img 
+                  src={preview} 
+                  alt="Payment receipt" 
+                  className="max-h-64 rounded-lg border"
                 />
+
                 <div className="flex gap-2">
                   <label className="inline-flex items-center gap-2 px-4 py-2 bg-[#f0eeee] text-[#3d312e] text-sm rounded cursor-pointer hover:bg-[#bba2a2] hover:text-[#f0eeee] transition">
                     Change Image
@@ -267,6 +291,7 @@ const PaymentPage = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Method</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Receipt</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-[#bba2a2]">
@@ -282,12 +307,26 @@ const PaymentPage = () => {
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                         ${purchase.status === "Approved" ? "bg-green-100 text-green-800" : 
                           purchase.status === "Rejected" ? "bg-red-100 text-red-800" : 
-                          "bg-[#bba2a2] text-[#3d312e]"}`}>
+                          "bg-yellow-100 text-yellow-800"}`}>
                         {purchase.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-[#3d312e]">
                       {purchase.paymentMethod || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#3d312e]">
+                      {purchase.receiptUrl ? (
+                        <a 
+                          href={purchase.receiptUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline"
+                        >
+                          View
+                        </a>
+                      ) : (
+                        "-"
+                      )}
                     </td>
                   </tr>
                 ))}

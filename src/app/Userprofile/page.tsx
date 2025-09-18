@@ -49,87 +49,108 @@ export default function ProfilePage() {
     text: DEFAULT_PROFILE.bannerText,
   })
 
-  // Static study notes data
-  const [studyNotes] = useState<StudyNote[]>([
-    {
-      id: 1,
-      date: "2025-07-25",
-      subject: "Graphic Design Principles",
-      notes:
-        "Studied color theory and typography basics. Important concepts:\n- Complementary colors\n- Kerning and leading\n- Visual hierarchy\n\nNeed to practice more with grid systems.",
-      color: "blue",
-    },
-    {
-      id: 2,
-      date: "2025-07-20",
-      subject: "Illustration Techniques",
-      notes:
-        "Practiced digital painting techniques in Procreate:\n\n1. Brush settings customization\n2. Layer management\n3. Blend modes\n4. Texture application\n\nCreated 3 landscape studies.",
-      color: "pink",
-    },
-    {
-      id: 3,
-      date: "2025-07-15",
-      subject: "UI/UX Design",
-      notes:
-        "Learned about:\n- User flows\n- Wireframing\n- Prototyping\n\nCreated mockups for mobile app design project. Feedback from mentor:\n- Improve button sizing\n- Add more white space\n- Consider accessibility",
-      color: "yellow",
-    },
-  ])
-
+  // Dynamic study notes data
+  const [studyNotes, setStudyNotes] = useState<StudyNote[]>([])
+  const [studyStreaks, setStudyStreaks] = useState<{ date: string; hours: number }[]>([])
   const [selectedNote, setSelectedNote] = useState<StudyNote | null>(null)
-  const [studyStreaks] = useState([
-    { date: "2025-07-01", hours: 2 },
-    { date: "2025-07-02", hours: 1 },
-    { date: "2025-07-03", hours: 0 },
-    { date: "2025-07-04", hours: 5 },
-    { date: "2025-07-05", hours: 3 },
-    { date: "2025-07-06", hours: 4 },
-    { date: "2025-07-07", hours: 1 },
-    { date: "2025-07-08", hours: 2 },
-    { date: "2025-07-09", hours: 5 },
-    { date: "2025-07-10", hours: 3 },
-    { date: "2025-07-27", hours: 4 },
-  ])
 
-  // Fetch profile data
-  useEffect(() => {
-    const fetchProfileData = async () => {
+  // Helper function to generate study streaks
+// Helper function to generate study streaks from raw API data
+const generateStudyStreaks = (studySessions: any[]) => {
+  const streaksMap: Record<string, number> = {};
+
+  studySessions.forEach(session => {
+    // Use the date from the session (either created_at or start_time)
+    const date = session.created_at ? session.created_at.split('T')[0] : 
+                session.start_time ? session.start_time.split('T')[0] : 
+                new Date().toISOString().split('T')[0];
+    
+    // Calculate actual duration in hours if available, otherwise count as 1 hour
+    let hours = 1; // Default to 1 hour
+    
+    if (session.start_time && session.end_time) {
       try {
-        const response = await fetch("/api/profile", {
-          credentials: "include",
-        })
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-
-        const data = await response.json()
-
-        setFormData({
-          username: data.user?.username || DEFAULT_PROFILE.username,
-          bio: data.profile?.bio || DEFAULT_PROFILE.bio,
-        })
-        setProfileImage(data.profile?.profileImage || DEFAULT_PROFILE.profileImage)
-        setAboutMe({
-          intro: data.profile?.intro || DEFAULT_PROFILE.intro,
-          description: data.profile?.description || DEFAULT_PROFILE.description,
-        })
-        setBannerData({
-          image: data.profile?.bannerImage || DEFAULT_PROFILE.bannerImage,
-          text: data.profile?.bannerText || DEFAULT_PROFILE.bannerText,
-        })
+        const start = new Date(session.start_time);
+        const end = new Date(session.end_time);
+        const durationMs = end.getTime() - start.getTime();
+        hours = durationMs / (1000 * 60 * 60); // Convert ms to hours
+        hours = Math.max(0.5, Math.round(hours * 100) / 100); // Round to 2 decimal places, minimum 0.5 hours
       } catch (error) {
-        console.error("Fetch error:", error)
-      } finally {
-        setIsLoading(false)
+        console.error("Error calculating duration:", error);
+        hours = 1; // Fallback to 1 hour on error
       }
     }
 
-    fetchProfileData()
-  }, [])
+    streaksMap[date] = (streaksMap[date] || 0) + hours;
+  });
 
-  // Handlers
+  // Convert to array format with rounded hours
+  return Object.entries(streaksMap).map(([date, hours]) => ({ 
+    date, 
+    hours: Math.round(hours) // Round to whole hours for display
+  }));
+}
+
+
+  
+
+  // Fetch profile data
+useEffect(() => {
+  const fetchProfileData = async () => {
+    try {
+      const response = await fetch("/api/profile", {
+        credentials: "include",
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      setFormData({
+        username: data.user?.username || DEFAULT_PROFILE.username,
+        bio: data.profile?.bio || DEFAULT_PROFILE.bio,
+      })
+      setProfileImage(data.profile?.profileImage || DEFAULT_PROFILE.profileImage)
+      setAboutMe({
+        intro: data.profile?.intro || DEFAULT_PROFILE.intro,
+        description: data.profile?.description || DEFAULT_PROFILE.description,
+      })
+      setBannerData({
+        image: data.profile?.bannerImage || DEFAULT_PROFILE.bannerImage,
+        text: data.profile?.bannerText || DEFAULT_PROFILE.bannerText,
+      })
+
+      // MOVE THIS CODE INSIDE THE FETCH FUNCTION, RIGHT HERE:
+      if (data.studyNotes && Array.isArray(data.studyNotes)) {
+        // Filter out study sessions with null/empty notes and transform API data
+        const formattedNotes: StudyNote[] = data.studyNotes
+          .filter((note: any) => note.notes && note.notes.trim() !== "") // Filter out empty notes
+          .map((note: any, index: number) => ({
+            id: note.id || index,
+            date: note.created_at || note.start_time || new Date().toISOString().split('T')[0],
+            subject: note.subject || "Unknown Subject",
+            notes: note.notes || "",
+            // Assign colors based on index
+            color: ["white", "blue", "yellow", "green", "pink"][index % 5] as NoteColor
+          }));
+        
+        setStudyNotes(formattedNotes);
+        
+        // Generate study streaks from the raw study sessions data (not formatted notes)
+        const streaks = generateStudyStreaks(data.studyNotes);
+        setStudyStreaks(streaks);
+      }
+    } catch (error) {
+      console.error("Fetch error:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  fetchProfileData()
+}, [])
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     return { name, value } // Return for modal use
@@ -147,63 +168,113 @@ export default function ProfilePage() {
   }, [])
 
   // Study Streak Calendar Component
-  const StudyStreakCalendar = () => {
-    const currentDate = new Date()
-    const currentMonth = currentDate.getMonth()
-    const currentYear = currentDate.getFullYear()
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
-    const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1)
+// Study Streak Calendar Component
+const StudyStreakCalendar = () => {
+  const currentDate = new Date()
+  const currentMonth = currentDate.getMonth()
+  const currentYear = currentDate.getFullYear()
+  
+  // Get first day of month and total days
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay() // 0 = Sunday, 1 = Monday, etc.
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+  
+  // Create array for days including empty cells for padding
+  const daysArray: (number | null)[] = []
+  
+  // Add empty cells for days before the 1st
+  for (let i = 0; i < firstDayOfMonth; i++) {
+    daysArray.push(null)
+  }
+  
+  // Add all days of the month
+  for (let i = 1; i <= daysInMonth; i++) {
+    daysArray.push(i)
+  }
 
-    const getStudyHours = (day: number) => {
-      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-      const dayData = studyStreaks.find((d) => d.date === dateStr)
-      return dayData ? dayData.hours : 0
-    }
+const getStudyHours = (day: number) => {
+  // Format the date to match your studyStreaks format (YYYY-MM-DD)
+  const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  
+  // Find matching study session
+  const dayData = studyStreaks.find((d) => {
+    // Ensure both dates are in the same format for comparison
+    const streakDate = new Date(d.date).toISOString().split('T')[0];
+    return streakDate === dateStr;
+  });
+  
+  return dayData ? dayData.hours : 0;
+}
 
-    const getColor = (hours: number) => {
-      if (hours === 0) return "bg-gray-100"
-      if (hours <= 1) return "bg-blue-100"
-      if (hours <= 2) return "bg-blue-200"
-      if (hours <= 3) return "bg-blue-300"
-      if (hours <= 4) return "bg-blue-400"
-      return "bg-blue-500"
-    }
+  const getColor = (hours: number) => {
+    if (hours === 0) return "bg-gray-100"
+    if (hours <= 1) return "bg-blue-100"
+    if (hours <= 2) return "bg-blue-200"
+    if (hours <= 3) return "bg-blue-300"
+    if (hours <= 4) return "bg-blue-400"
+    return "bg-blue-500"
+  }
 
-    return (
-      <div className="space-y-2">
-        <h4 className="font-medium text-[#3d312e]">
-          July {currentYear} • {studyStreaks.filter((d) => d.hours > 0).length} study days
-        </h4>
-        <div className="grid grid-cols-7 gap-1">
-          {daysArray.map((day) => {
-            const hours = getStudyHours(day)
+  return (
+    <div className="space-y-2">
+      <h4 className="font-medium text-[#3d312e]">
+        {new Date().toLocaleString('default', { month: 'long' })} {currentYear} • {studyStreaks.filter((d) => d.hours > 0).length} study days
+      </h4>
+      
+      {/* Day headers */}
+      <div className="grid grid-cols-7 gap-1 mb-1 text-xs text-center text-gray-500">
+        <div>Sun</div>
+        <div>Mon</div>
+        <div>Tue</div>
+        <div>Wed</div>
+        <div>Thu</div>
+        <div>Fri</div>
+        <div>Sat</div>
+      </div>
+      
+      <div className="grid grid-cols-7 gap-1">
+        {daysArray.map((day, index) => {
+          if (day === null) {
             return (
               <div
-                key={day}
-                className={`h-8 rounded-sm ${getColor(hours)} flex items-center justify-center text-xs`}
-                title={`${day}/${currentMonth + 1}: ${hours} hour(s)`}
-              >
-                {day === currentDate.getDate() && currentMonth === new Date().getMonth() ? (
-                  <span className="font-bold">{day}</span>
-                ) : (
-                  day
-                )}
-              </div>
+                key={`empty-${index}`}
+                className="h-8 rounded-sm bg-transparent"
+              />
             )
-          })}
-        </div>
-        <div className="flex justify-between text-xs text-gray-500 mt-2">
-          <span>Less</span>
-          <div className="flex space-x-1">
-            <div className="w-4 h-4 bg-blue-100 rounded-sm"></div>
-            <div className="w-4 h-4 bg-blue-300 rounded-sm"></div>
-            <div className="w-4 h-4 bg-blue-500 rounded-sm"></div>
-          </div>
-          <span>More</span>
-        </div>
+          }
+          
+          const hours = getStudyHours(day)
+          const isToday = day === currentDate.getDate() && currentMonth === new Date().getMonth()
+          
+          return (
+            <div
+              key={day}
+              className={`h-8 rounded-sm ${getColor(hours)} flex items-center justify-center text-xs ${
+                isToday ? "ring-2 ring-blue-500" : ""
+              }`}
+              title={`${day}/${currentMonth + 1}: ${hours} hour(s)`}
+            >
+              {isToday ? (
+                <span className="font-bold">{day}</span>
+              ) : (
+                day
+              )}
+            </div>
+          )
+        })}
       </div>
-    )
-  }
+      
+      <div className="flex justify-between text-xs text-gray-500 mt-2">
+        <span>Less</span>
+        <div className="flex space-x-1">
+          <div className="w-4 h-4 bg-blue-100 rounded-sm"></div>
+          <div className="w-4 h-4 bg-blue-300 rounded-sm"></div>
+          <div className="w-4 h-4 bg-blue-500 rounded-sm"></div>
+        </div>
+        <span>More</span>
+      </div>
+    </div>
+  )
+}
 
   // Banner Component
   const Banner = () => {
@@ -424,7 +495,7 @@ export default function ProfilePage() {
           alert("New passwords don't match!")
           return
         }
-        console.log("Saving password:", editFormData) // Debug log
+
         try {
           const response = await fetch("/api/profile", {
             method: "PATCH",

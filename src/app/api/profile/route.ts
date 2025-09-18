@@ -26,18 +26,43 @@ export async function GET() {
   try {
     const connection = await db.getConnection()
 
-    // Fetch user data - get username from user table
-    const [userRows] = await connection.execute(`SELECT name FROM user WHERE user_id = ?`, [userId])
 
-    // Fetch profile data from user_profiles table
-    const [profileRows] = await connection.execute(`SELECT * FROM user_profiles WHERE user_id = ?`, [userId])
+    const [userRows] = await connection.execute(
+      `SELECT name FROM user WHERE user_id = ?`,
+      [userId]
+    )
 
-    connection.release() // ✅ release back to pool
+
+    const [profileRows] = await connection.execute(
+      `SELECT * FROM user_profiles WHERE user_id = ?`,
+      [userId]
+    )
+
+    const [notesRows] = await connection.execute(
+      `
+      SELECT 
+        ss.id,
+        ss.subject_id,
+        s.name AS subject,
+        ss.notes,
+        ss.start_time,
+        ss.end_time,
+        ss.created_at
+      FROM study_sessions ss
+      JOIN subjects s ON ss.subject_id = s.id
+      WHERE ss.user_id = ?
+      ORDER BY ss.created_at DESC
+      `,
+      [userId]
+    )
+
+    connection.release()
 
     const users = userRows as any[]
     if (users.length === 0) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
+
 
     const user = users[0]
     const profile = (profileRows as any[])[0] || {}
@@ -55,12 +80,14 @@ export async function GET() {
         bannerText: profile.banner_text || DEFAULT_PROFILE.bannerText,
         occupation: profile.occupation || DEFAULT_PROFILE.occupation,
       },
+      studyNotes: notesRows,
     })
   } catch (error) {
     console.error("Database error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
 
 export async function PUT(request: Request) {
   const cookieStore = await cookies()

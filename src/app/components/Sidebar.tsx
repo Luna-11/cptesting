@@ -69,10 +69,10 @@ export default function Sidebar({
                     {isProUser ? (
             <NavItem icon={<LockClockIcon className="mr-4 text-white" />} href="/vocab" title="Vocabulary Study" />
           ) : (
-            <Tooltip title="Upgrade to Pro to unlock Focus Session" arrow>
+            <Tooltip title="Upgrade to Pro to unlock Vocabulary Study" arrow>
               <li className="mb-10 flex items-center text-gray-400 cursor-not-allowed">
                 <LockIcon className="mr-4 text-white" />
-                <span>Focus Session (Pro)</span>
+                <span>Vocabulary Study (Pro)</span>
               </li>
             </Tooltip>
           )}

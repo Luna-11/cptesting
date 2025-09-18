@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@script/db'; // ✅ db is now a connection pool
+import { db } from '@script/db';
 import type { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';

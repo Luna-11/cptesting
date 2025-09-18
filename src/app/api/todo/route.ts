@@ -6,18 +6,17 @@ export async function GET() {
   try {
     const cookieStore = await cookies();
     const userId = cookieStore.get('userId')?.value;
-    
-    console.log('User ID from cookies:', userId); // Add this line
-    
+
     if (!userId) {
-      console.log('No user ID found - unauthorized'); // Add this line
+      console.log('No user ID found - unauthorized');
       return NextResponse.json(
         { error: 'Unauthorized - Please log in' },
         { status: 401 }
       );
     }
 
-    const [tasks] = await db.query(`
+    const [tasks] = await db.query(
+      `
       SELECT 
         task_id,
         user_id,
@@ -29,11 +28,22 @@ export async function GET() {
       FROM todo_tasks
       WHERE user_id = ?
       ORDER BY created_at DESC
-    `, [userId]);
-    
-    console.log('Tasks from database:', tasks); // Add this line
-    
-    return NextResponse.json(tasks);
+      `,
+      [userId]
+    );
+
+    const [countResult] = await db.query(
+      `SELECT COUNT(*) as totalCount FROM todo_tasks WHERE user_id = ?`,
+      [userId]
+    );
+
+    const totalCount = (countResult as any[])[0].totalCount;
+
+
+    return NextResponse.json({
+      tasks,
+      totalCount,
+    });
   } catch (error) {
     console.error('Database error:', error);
     return NextResponse.json(
@@ -42,6 +52,7 @@ export async function GET() {
     );
   }
 }
+
 
 export async function POST(request: Request) {
   try {

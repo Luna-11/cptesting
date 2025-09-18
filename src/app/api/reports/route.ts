@@ -3,6 +3,15 @@ import { cookies } from "next/headers";
 import { db } from "@script/db";
 import type { RowDataPacket } from "mysql2/promise";
 
+// Helper function to safely parse float values
+const safeParseFloat = (value: any, defaultValue = 0): number => {
+  if (value === null || value === undefined || value === '') {
+    return defaultValue;
+  }
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? defaultValue : parsed;
+};
+
 export async function GET() {
   const cookieStore = await cookies();
   const userId = cookieStore.get("userId")?.value;
@@ -16,7 +25,7 @@ export async function GET() {
       SELECT 
         DATE(CONVERT_TZ(start_time, '+00:00', '+06:30')) AS day,
         DAYNAME(CONVERT_TZ(start_time, '+00:00', '+06:30')) AS day_name,
-        GREATEST(SUM(duration) / 3600, 0.01) AS hours,  -- Ensure minimum 0.01 hours
+        GREATEST(COALESCE(SUM(duration) / 3600, 0), 0.01) AS hours,  -- Ensure minimum 0.01 hours
         DATE_FORMAT(MIN(start_time), '%H:%i') AS start_time,
         DATE_FORMAT(MAX(end_time), '%H:%i') AS end_time
       FROM study_sessions
@@ -26,11 +35,11 @@ export async function GET() {
       ORDER BY day ASC
     `, [userId]);
 
-    // Get break sessions data (unchanged)
+    // Get break sessions data
     const [breakSessions] = await db.query<RowDataPacket[]>(`
       SELECT 
         break_type AS name,
-        SUM(duration) / 3600 AS value
+        COALESCE(SUM(duration) / 3600, 0) AS value
       FROM break_sessions
       WHERE user_id = ?
       AND start_time >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
@@ -60,7 +69,7 @@ export async function GET() {
         'study' AS type,
         id,
         subject_id,
-        duration / 60 AS duration_minutes,
+        COALESCE(duration / 60, 0) AS duration_minutes,
         start_time,
         end_time,
         (SELECT name FROM subjects WHERE id = subject_id) AS task_name,
@@ -76,10 +85,10 @@ export async function GET() {
         'break' AS type,
         id,
         subject_id,
-        duration / 60 AS duration_minutes,
+        COALESCE(duration / 60, 0) AS duration_minutes,
         start_time,
         end_time,
-        CONCAT(break_type, ' break') AS task_name,
+        CONCAT(COALESCE(break_type, 'Unknown'), ' break') AS task_name,
         'Break' AS category,
         NULL AS notes
       FROM break_sessions
@@ -93,7 +102,7 @@ export async function GET() {
     const [calendarData] = await db.query<RowDataPacket[]>(`
       SELECT 
         DATE(CONVERT_TZ(start_time, '+00:00', '+06:30')) AS date,
-        GREATEST(SUM(duration) / 3600, 0.01) AS hours  -- Minimum 0.01 hours (36 seconds)
+        GREATEST(COALESCE(SUM(duration) / 3600, 0), 0.01) AS hours  -- Minimum 0.01 hours (36 seconds)
       FROM study_sessions
       WHERE user_id = ?
       AND YEAR(CONVERT_TZ(start_time, '+00:00', '+06:30')) = YEAR(CURDATE())
@@ -105,33 +114,33 @@ export async function GET() {
       success: true,
       data: {
         studyData: studySessions.map(session => ({
-          day: session.day_name,
-          hours: parseFloat(session.hours),
-          date: session.day,
-          start: session.start_time,
-          end: session.end_time
+          day: session.day_name || 'Unknown',
+          hours: safeParseFloat(session.hours, 0.01),
+          date: session.day || new Date().toISOString().split('T')[0],
+          start: session.start_time || '00:00',
+          end: session.end_time || '00:00'
         })),
         breakData: breakSessions.map(session => ({
-          name: session.name,
-          value: parseFloat(session.value)
+          name: session.name || 'Unknown',
+          value: safeParseFloat(session.value, 0)
         })),
         overallData: overallData.map(session => ({
-          day: session.day_name,
-          study: parseFloat(session.study),
-          break: parseFloat(session.break)
+          day: session.day_name || 'Unknown',
+          study: safeParseFloat(session.study, 0.01),
+          break: safeParseFloat(session.break, 0)
         })),
         timelineData: timelineData.map(session => ({
           id: session.id,
           startTime: session.start_time,
           endTime: session.end_time,
-          duration: parseFloat(session.duration_minutes),
-          taskName: session.task_name,
-          category: session.category,
+          duration: safeParseFloat(session.duration_minutes, 0),
+          taskName: session.task_name || 'Unknown Task',
+          category: session.category || 'Unknown',
           notes: session.notes
         })),
         calendarData: calendarData.map(day => ({
-          date: day.date,
-          hours: parseFloat(day.hours)
+          date: day.date || new Date().toISOString().split('T')[0],
+          hours: safeParseFloat(day.hours, 0.01)
         }))
       }
     });

@@ -15,7 +15,7 @@ export default async function Layout({ children }: LayoutProps) {
   const userRole = role ?? UserRole.BASIC;
 
   return (
-    <html lang="en" className={`${workSans.variable} ${workSans.className}`}>
+    <html lang="en">
       <body className="min-h-screen bg-background font-sans antialiased">
         <AuthWrapper userRole={userRole}>
           {children}

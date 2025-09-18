@@ -4,10 +4,11 @@ import { cookies } from 'next/headers';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // Add Promise wrapper
 ) {
   try {
-    const cookieStore = await cookies();
+    const { id } = await params; // Await the params
+    const cookieStore =await cookies();
     const userId = cookieStore.get('userId')?.value;
     
     if (!userId) {
@@ -27,7 +28,7 @@ export async function GET(
         important,
         created_at
        FROM todo_tasks WHERE task_id = ? AND user_id = ?`,
-      [params.id, userId]
+      [id, userId] // Use the destructured id
     );
     
     if ((rows as any[]).length === 0) {
@@ -49,9 +50,10 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // Add Promise wrapper
 ) {
   try {
+    const { id } = await params; // Await the params
     const cookieStore =await cookies();
     const userId = cookieStore.get('userId')?.value;
     
@@ -69,7 +71,7 @@ export async function PUT(
       `UPDATE todo_tasks 
        SET task_name = ?, status = ?, important = ?
        WHERE task_id = ? AND user_id = ?`,
-      [task_name, status, important, params.id, userId]
+      [task_name, status, important, id, userId] // Use the destructured id
     );
 
     const [updatedTask] = await db.query(
@@ -82,7 +84,7 @@ export async function PUT(
         important,
         created_at
        FROM todo_tasks WHERE task_id = ? AND user_id = ?`,
-      [params.id, userId]
+      [id, userId] // Use the destructured id
     );
 
     return NextResponse.json((updatedTask as any[])[0]);
@@ -97,9 +99,10 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // Add Promise wrapper
 ) {
   try {
+    const { id } = await params; // Await the params
     const cookieStore =await cookies();
     const userId = cookieStore.get('userId')?.value;
     
@@ -112,7 +115,7 @@ export async function DELETE(
 
     await db.query(
       'DELETE FROM todo_tasks WHERE task_id = ? AND user_id = ?', 
-      [params.id, userId]
+      [id, userId] // Use the destructured id
     );
     return NextResponse.json({ message: 'Task deleted successfully' });
   } catch (error) {

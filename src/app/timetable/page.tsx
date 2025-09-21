@@ -42,7 +42,9 @@ type TimeSlotProps = {
 }
 
 const DayHeader = memo(({ day }: { day: Day }) => (
-  <div className="p-2 font-bold text-center border border-[black] bg-[#3d312e] text-[#f0eeee] text-sm">{day}</div>
+  <div className="p-2 font-bold text-center border border-[black] bg-[#3d312e] text-[#f0eeee] text-sm truncate">
+    {day.substring(0, 3)}
+  </div>
 ))
 
 const TimeSlot = memo(({ time, day, event, handleSlotClick, removeEvent }: TimeSlotProps) => {
@@ -246,17 +248,17 @@ export default function Timetable() {
   }
 
   return (
-    <div className="flex flex-col items-center p-4 max-w-6xl mx-auto bg-white">
-      <div className="flex flex-wrap gap-4 mb-4 p-4 rounded-lg w-full justify-center bg-white">
+    <div className="flex flex-col items-center p-2 md:p-4 max-w-6xl mx-auto bg-white">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3 mb-4 p-3 md:p-4 rounded-lg w-full justify-center bg-white">
         <div className="flex items-center gap-2">
-          <label htmlFor="timeInterval" className="text-[#3d312e]">
+          <label htmlFor="timeInterval" className="text-[#3d312e] text-sm md:text-base">
             Time Interval:
           </label>
           <select
             id="timeInterval"
             value={timeInterval}
             onChange={(e) => setTimeInterval(Number(e.target.value) as 30 | 60 | 120)}
-            className="border border-[black] p-1 rounded text-[#3d312e]"
+            className="border border-[black] p-1 rounded text-[#3d312e] text-sm"
           >
             {[30, 60, 120].map((mins) => (
               <option key={mins} value={mins}>
@@ -266,7 +268,7 @@ export default function Timetable() {
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <label htmlFor="startDay" className="text-[#3d312e]">
+          <label htmlFor="startDay" className="text-[#3d312e] text-sm md:text-base">
             From:
           </label>
           <select
@@ -278,17 +280,17 @@ export default function Timetable() {
                 startDay: e.target.value as Day,
               }))
             }
-            className="border border-[black] p-1 rounded text-[#3d312e]"
+            className="border border-[black] p-1 rounded text-[#3d312e] text-sm"
           >
             {ALL_DAYS.map((day) => (
               <option key={`start-${day}`} value={day}>
-                {day}
+                {day.substring(0, 3)}
               </option>
             ))}
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <label htmlFor="endDay" className="text-[#3d312e]">
+          <label htmlFor="endDay" className="text-[#3d312e] text-sm md:text-base">
             To:
           </label>
           <select
@@ -300,24 +302,25 @@ export default function Timetable() {
                 endDay: e.target.value as Day,
               }))
             }
-            className="border border-[black] p-1 rounded text-[#3d312e]"
+            className="border border-[black] p-1 rounded text-[#3d312e] text-sm"
           >
             {ALL_DAYS.map((day) => (
               <option key={`end-${day}`} value={day}>
-                {day}
+                {day.substring(0, 3)}
               </option>
             ))}
           </select>
         </div>
       </div>
-      <div className="overflow-auto w-full border border-[black] rounded-lg max-h-[80vh]">
+      
+      <div className="w-full overflow-auto border border-[black] rounded-lg max-h-[70vh]">
         <div
-          className="grid"
+          className="grid min-w-[600px]"
           style={{
-            gridTemplateColumns: `80px repeat(${selectedDays.length}, minmax(120px, 1fr))`,
+            gridTemplateColumns: `70px repeat(${selectedDays.length}, minmax(90px, 1fr))`,
           }}
         >
-          <div className="p-2 font-bold border border-[black] text-center bg-[#3d312e] text-[#f0eeee] text-sm">
+          <div className="p-2 font-bold border border-[black] text-center bg-[#3d312e] text-[#f0eeee] text-sm sticky left-0 z-10">
             TIME
           </div>
           {selectedDays.map((day) => (
@@ -325,7 +328,7 @@ export default function Timetable() {
           ))}
           {times.map((time) => (
             <React.Fragment key={time}>
-              <div className="p-1 font-bold text-center border border-[black] bg-white text-[#3d312e] text-sm">
+              <div className="p-1 font-bold text-center border border-[black] bg-white text-[#3d312e] text-sm sticky left-0 z-10">
                 {time}
               </div>
               {selectedDays.map((day) => {
@@ -345,27 +348,29 @@ export default function Timetable() {
           ))}
         </div>
       </div>
+      
       {modalState.show && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4 text-[#3d312e]">
-              {modalState.isEditing ? "Edit" : "Add"} Event at {modalState.time}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-4 rounded-lg w-full max-w-xs mx-auto shadow-xl">
+            <h2 className="text-lg font-bold mb-3 text-[#3d312e]">
+              {modalState.isEditing ? "Edit" : "Add"} Event
             </h2>
+            <p className="text-sm text-gray-600 mb-3">Time: {modalState.time} | Day: {modalState.day}</p>
             <input
               type="text"
               value={modalState.event}
               onChange={(e) => setModalState((prev) => ({ ...prev, event: e.target.value }))}
-              className="border border-[black] p-2 rounded w-full mb-4 text-[#3d312e]"
+              className="border border-gray-300 p-2 rounded w-full mb-3 text-sm"
               placeholder="Event name"
               autoFocus
             />
             <div className="mb-4">
-              <label className="block mb-2 text-[#3d312e]">Color:</label>
-              <div className="flex flex-wrap gap-2">
+              <label className="block mb-2 text-sm text-[#3d312e]">Color:</label>
+              <div className="flex flex-wrap gap-1">
                 {COLOR_OPTIONS.map((color) => (
                   <button
                     key={color.value}
-                    className={`w-8 h-8 rounded-full ${modalState.color === color.value ? "ring-2 ring-offset-2 ring-[#bba2a2]" : ""}`}
+                    className={`w-6 h-6 rounded-full ${modalState.color === color.value ? "ring-2 ring-offset-1 ring-[#bba2a2]" : ""}`}
                     style={{ backgroundColor: color.value }}
                     onClick={() => setModalState((prev) => ({ ...prev, color: color.value }))}
                     title={color.name}
@@ -373,23 +378,28 @@ export default function Timetable() {
                 ))}
               </div>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={saveEvent}
+                  className="flex-1 px-3 py-2 bg-[#3d312e] text-[#f0eeee] rounded text-sm"
+                >
+                  {modalState.isEditing ? "Update" : "Add"}
+                </button>
+                {modalState.isEditing && (
+                  <button
+                    onClick={() => modalState.id && removeEvent(modalState.id)}
+                    className="px-3 py-2 bg-red-500 text-white rounded text-sm"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
               <button
                 onClick={() => setModalState((prev) => ({ ...prev, show: false }))}
-                className="px-4 py-2 border border-[black] rounded text-[#3d312e]"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
               >
                 Cancel
-              </button>
-              {modalState.isEditing && (
-                <button
-                  onClick={() => modalState.id && removeEvent(modalState.id)}
-                  className="px-4 py-2 bg-red-500 text-white rounded"
-                >
-                  Delete
-                </button>
-              )}
-              <button onClick={saveEvent} className="px-4 py-2 bg-[#3d312e] text-[#f0eeee] rounded">
-                {modalState.isEditing ? "Update" : "Add"}
               </button>
             </div>
           </div>

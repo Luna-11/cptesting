@@ -156,12 +156,10 @@ export default function AboutUsPage() {
               <div className="text-content">
                 <p className="premium-badge">PREMIUM FEATURE</p>
                 <ul className="features-list">
-                  <li>Advanced distraction blocking during sessions</li>
-                  <li>Custom ambient sounds and focus music</li>
-                  <li>AI-powered focus coaching and tips</li>
-                  <li>Detailed session analytics and insights</li>
-                  <li>Cross-device synchronization</li>
-                  <li>Export session data for offline review</li>
+                  <li>Avoid distraction during sessions</li>
+                  <li>Different choises ambient sounds and focus music.</li>
+                  <li>Options for images to make the better mood.</li>
+                  <li>Pomodoro Timer to help you study efficiently.</li>
                 </ul>
                 <button className="cta-button premium-button">UPGRADE NOW</button>
               </div>
@@ -177,12 +175,10 @@ export default function AboutUsPage() {
             <div className="content-grid">
               <div className="text-content">
                 <p className="premium-badge">PREMIUM FEATURE</p>
-                <ul className="features-list">
-                  <li>Spaced repetition algorithm for optimal learning</li>
-                  <li>Pronunciation practice with voice recognition</li>
-                  <li>Progress tracking across multiple languages</li>
-                  <li>Offline mode for studying anywhere</li>
-                  <li>Sync with popular language learning apps</li>
+                <ul className="features-list">                  
+                  <li>Add the words and the meaning of it.</li>
+                  <li>Change the status to track your learning.</li>
+                  <li>Memorize them with the cute cute cats word cards.</li>
                 </ul>
                 <button className="cta-button premium-button">TRY FREE TRIAL</button>
               </div>
@@ -194,7 +190,7 @@ export default function AboutUsPage() {
         {/* Final Slide */}
 
 
-                <section className="slide bg-space-dark-2">
+<section className="slide bg-space-dark-2">
           <div className="slide-content">
             <h1 className="slideOneh1">Ready to Study?</h1>
             

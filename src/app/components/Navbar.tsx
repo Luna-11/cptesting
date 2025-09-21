@@ -5,7 +5,7 @@ import { UserRole } from "./Sidebar";
 import { Menu, Bell } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import NotificationDropdown from "./NotificationDropdown"; // Import the component
+import NotificationDropdown from "./NotificationDropdown";
 
 type NavbarProps = {
   setIsSidebarOpen?: React.Dispatch<React.SetStateAction<boolean>>;
@@ -31,13 +31,25 @@ export default function Navbar({ setIsSidebarOpen, userRole }: NavbarProps) {
   return (
     <nav className="navbar py-6 text-center font-bold relative w-full">
       <div className="flex justify-between items-center w-full">
-        {/* Left Side */}
+        {/* Left Side - Made same width as right side for balance */}
+        <div className="flex-1 flex justify-start">
+          {setIsSidebarOpen && (
+            <button 
+              onClick={() => setIsSidebarOpen(prev => !prev)}
+              className="ml-4 p-2 rounded-md hover:bg-gray-100"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        {/* Center Title - Now properly centered */}
         <div className="text-xl flex-1 text-center">
           <p>Study-With-Me</p>
         </div>
 
         {/* Right Side */}
-        <div className="flex items-center space-x-6 mr-8">
+        <div className="flex items-center space-x-6 mr-8 flex-1 justify-end">
           <Link href="/login" className="hover:underline">Log In</Link>
           <Link href="/aboutUs" className="hover:underline">About Us</Link>
           

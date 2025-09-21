@@ -4,8 +4,6 @@ import { StarIcon as StarIconOutline } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { ArrowsUpDownIcon } from "@heroicons/react/24/outline";
 
-
-
 type TaskStatus = "toStart" | "inProgress" | "done";
 
 type Task = {
@@ -235,70 +233,73 @@ export default function TaskBoard() {
   }
 
   return (
-    <div className={`p-6 font-sans`}>
+    <div className={`p-4 md:p-6 font-sans max-w-6xl mx-auto`}>
       {/* Header */}
       <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2 gap-2">
           <h1 className="text-2xl font-bold">My Day</h1>
-          <div className="flex gap-4">
+          <div className="flex gap-2 md:gap-4">
             <button
               onClick={toggleSort}
-              className="text-gray-500 flex items-center gap-1"
+              className="text-gray-500 flex items-center gap-1 text-sm md:text-base px-2 py-1 md:px-0 md:py-0"
             >
-              <ArrowsUpDownIcon className="w-5 h-5" />
-              <span>Sort: {sortByNewest ? "Newest" : "Oldest"}</span>
+              <ArrowsUpDownIcon className="w-4 h-4 md:w-5 md:h-5" />
+              <span className="hidden sm:inline">Sort: </span>
+              <span>{sortByNewest ? "Newest" : "Oldest"}</span>
             </button>
             <button
               onClick={toggleImportantFilter}
-              className={`flex items-center gap-1 ${
+              className={`flex items-center gap-1 text-sm md:text-base px-2 py-1 md:px-0 md:py-0 ${
                 showImportantOnly ? "text-yellow-400" : "text-gray-500"
               }`}
             >
               {showImportantOnly ? (
-                <StarIconSolid className="w-5 h-5 text-yellow-400" />
+                <StarIconSolid className="w-4 h-4 md:w-5 md:h-5 text-yellow-400" />
               ) : (
-                <StarIconOutline className="w-5 h-5" />
+                <StarIconOutline className="w-4 h-4 md:w-5 md:h-5" />
               )}
-              <span>Important</span>
+              <span className="hidden sm:inline">Important</span>
             </button>
           </div>
         </div>
-        <p className="text-gray-500">{formattedDate}</p>
+        <p className="text-gray-500 text-sm md:text-base">{formattedDate}</p>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>
+        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm md:text-base">
+          {error}
+        </div>
       )}
 
       {/* Input */}
-      <div className="flex justify-end mb-4">
+      <div className="flex flex-col sm:flex-row justify-end mb-4 gap-2">
         <input
           type="text"
           value={taskInput}
           onChange={(e) => setTaskInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
           placeholder="Enter a task"
-          className="border border-gray-300 rounded px-4 py-2 w-80 mr-2"
+          className="border border-gray-300 rounded px-4 py-2 w-full sm:w-64 md:w-80 mr-0 sm:mr-2"
         />
         <button
           onClick={handleAddTask}
-          className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
+          className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors disabled:opacity-50 whitespace-nowrap"
           disabled={!taskInput.trim()}
         >
-          Add
+          Add Task
         </button>
       </div>
 
       {/* Tasks */}
       {processedTasks.length === 0 ? (
-        <div className="text-center py-10 text-gray-500">
+        <div className="text-center py-10 text-gray-500 text-sm md:text-base">
           {showImportantOnly
             ? "No important tasks found"
             : "No tasks found. Add a new task to get started!"}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {processedTasks.map((task) => {
             const currentStep = getStepFromStatus(task.status);
             return (
@@ -309,7 +310,7 @@ export default function TaskBoard() {
                 }`}
               >
                 {/* Header */}
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => toggleImportant(task.task_id)}
@@ -318,6 +319,7 @@ export default function TaskBoard() {
                           ? "Mark as not important"
                           : "Mark as important"
                       }
+                      className="flex-shrink-0"
                     >
                       {task.important ? (
                         <StarIconSolid className="w-5 h-5 text-yellow-400" />
@@ -325,9 +327,11 @@ export default function TaskBoard() {
                         <StarIconOutline className="w-5 h-5 text-gray-400" />
                       )}
                     </button>
-                    <span className="font-semibold">{task.task_name}</span>
+                    <span className="font-semibold text-sm md:text-base break-words">
+                      {task.task_name}
+                    </span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 self-end sm:self-auto">
                     <select
                       value={task.status}
                       onChange={(e) =>
@@ -336,7 +340,7 @@ export default function TaskBoard() {
                           e.target.value as TaskStatus
                         )
                       }
-                      className="border border-gray-300 rounded px-2 py-1"
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
                     >
                       <option value="toStart">To Start</option>
                       <option value="inProgress">In Progress</option>
@@ -344,7 +348,7 @@ export default function TaskBoard() {
                     </select>
                     <button
                       onClick={() => handleDeleteTask(task.task_id)}
-                      className="text-red-500 hover:text-red-700"
+                      className="text-red-500 hover:text-red-700 text-sm md:text-base"
                       aria-label="Delete task"
                     >
                       Delete
@@ -353,11 +357,11 @@ export default function TaskBoard() {
                 </div>
 
                 {/* Progress */}
-                <div className="flex items-center gap-4 w-full">
+                <div className="flex items-center gap-2 md:gap-4 w-full">
                   {/* Step 1 */}
-                  <div className="flex flex-col items-center">
+                  <div className="flex flex-col items-center flex-shrink-0">
                     <div
-                      className={`w-[60px] h-[60px] flex items-center justify-center rounded-full text-white text-xs font-bold ${
+                      className={`w-10 h-10 md:w-[60px] md:h-[60px] flex items-center justify-center rounded-full text-white text-xs font-bold ${
                         currentStep === 1 ? "bg-pink-600" : "bg-gray-400"
                       }`}
                     >
@@ -371,7 +375,7 @@ export default function TaskBoard() {
                         }}
                       />
                     </div>
-                    <span className="text-[10px] mt-1">To start</span>
+                    <span className="text-[10px] mt-1 text-center">To start</span>
                   </div>
 
                   <div
@@ -381,9 +385,9 @@ export default function TaskBoard() {
                   ></div>
 
                   {/* Step 2 */}
-                  <div className="flex flex-col items-center">
+                  <div className="flex flex-col items-center flex-shrink-0">
                     <div
-                      className={`w-[60px] h-[60px] flex items-center justify-center rounded-full text-white text-xs font-bold ${
+                      className={`w-10 h-10 md:w-[60px] md:h-[60px] flex items-center justify-center rounded-full text-white text-xs font-bold ${
                         currentStep === 2 ? "bg-pink-600" : "bg-gray-400"
                       }`}
                     >
@@ -397,7 +401,7 @@ export default function TaskBoard() {
                         }}
                       />
                     </div>
-                    <span className="text-[10px] mt-1">In Progress</span>
+                    <span className="text-[10px] mt-1 text-center">In Progress</span>
                   </div>
 
                   <div
@@ -407,9 +411,9 @@ export default function TaskBoard() {
                   ></div>
 
                   {/* Step 3 */}
-                  <div className="flex flex-col items-center">
+                  <div className="flex flex-col items-center flex-shrink-0">
                     <div
-                      className={`w-[60px] h-[60px] flex items-center justify-center rounded-full text-white text-xs font-bold ${
+                      className={`w-10 h-10 md:w-[60px] md:h-[60px] flex items-center justify-center rounded-full text-white text-xs font-bold ${
                         currentStep === 3 ? "bg-pink-600" : "bg-gray-400"
                       }`}
                     >
@@ -423,7 +427,7 @@ export default function TaskBoard() {
                         }}
                       />
                     </div>
-                    <span className="text-[10px] mt-1">Done</span>
+                    <span className="text-[10px] mt-1 text-center">Done</span>
                   </div>
                 </div>
               </div>

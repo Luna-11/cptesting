@@ -74,6 +74,26 @@ export default function DashboardPage() {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(true);
   const [hasSessionData, setHasSessionData] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+
+  // Check screen size on mount and resize
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsTablet(width >= 768 && width < 1024);
+    };
+
+    // Initial check
+    checkScreenSize();
+
+    // Add event listener
+    window.addEventListener('resize', checkScreenSize);
+
+    // Clean up
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   // Function to process session data for the chart
   const processSessionDataForChart = (sessions: any[]): ChartData[] => {
@@ -192,6 +212,7 @@ export default function DashboardPage() {
         console.error('Error fetching session data:', error);
         setChartData(mockChartData);
         setHasSessionData(false);
+        setIsChartLoading(false);
       } finally {
         setIsChartLoading(false);
       }
@@ -332,14 +353,14 @@ export default function DashboardPage() {
   const calendarDays = generateCalendarDays();
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#f0eeee] p-4">
+    <div className="flex flex-col min-h-screen bg-[#f0eeee] p-2 md:p-4">
       {/* Info Banner with Subscription Alert */}
-      <div className="bg-[#3d312e] text-[#f0eeee] rounded-2xl p-6 mb-6 flex justify-between items-center">
-        <div className="max-w-[70%]">
+      <div className="bg-[#3d312e] text-[#f0eeee] rounded-2xl p-4 md:p-6 mb-4 md:mb-6 flex flex-col md:flex-row justify-between items-center">
+        <div className="max-w-full md:max-w-[40%] mb-4 md:mb-0">
           <h2 className="text-xl font-semibold">
             Hello {userData?.name || userData?.username || 'there'}!
           </h2>
-          <p className="text-lg mt-1">
+          <p className="text-sm md:text-lg mt-1">
             Today you have 9 new applications. Also you need to hire ROR
             Developer, React.JS Developer.
           </p>
@@ -350,27 +371,30 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-        <div className="w-36 h-36 -mb-2 shrink-0">
+        
+        {/* Centered Cat Image */}
+        <div className="w-24 h-24 md:w-36 md:h-36 shrink-0 order-2 md:order-1 mx-auto md:mx-0">
           <Image
             src="/cat1.png"
             alt="Cat"
-            width={144}
-            height={144}
+            width={isMobile ? 96 : 144}
+            height={isMobile ? 96 : 144}
             className="rounded-xl object-contain"
           />
         </div>
-        <div className="bg-[#f5e8c7] text-[#3d312e] rounded-2xl p-4 shadow-lg flex items-center justify-center w-48 h-48 ml-4">
+        
+        <div className="bg-[#f5e8c7] text-[#3d312e] rounded-2xl p-3 md:p-4 shadow-lg flex items-center justify-center w-full md:w-48 h-32 md:h-48 order-1 md:order-2">
           <div className="text-center">
-            <p className="text-sm">For better features, buy our pro plan now</p>
-            <button className="mt-2 bg-yellow-500 text-white px-4 py-2 rounded" onClick={() => window.location.href = '/purchases'}>Upgrade to Pro</button>
+            <p className="text-xs md:text-sm">For better features, buy our pro plan now</p>
+            <button className="mt-2 bg-yellow-500 text-white px-3 py-1 md:px-4 md:py-2 rounded text-sm md:text-base" onClick={() => window.location.href = '/purchases'}>Upgrade to Pro</button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 flex-1">
         {/* Line Chart - Fixed height and reduced padding */}
-        <div className="bg-white rounded-2xl p-4 pb-2 shadow-md lg:col-span-2 flex flex-col h-[373px]">
+        <div className="bg-white rounded-2xl p-3 md:p-4 pb-2 shadow-md lg:col-span-2 flex flex-col h-[320px] md:h-[373px]">
           <h3 className="text-lg font-semibold mb-2">
             Study & Break Sessions
           </h3>
@@ -381,14 +405,14 @@ export default function DashboardPage() {
           ) : !hasSessionData ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
               <div className="text-4xl mb-3">📚</div>
-              <p className="text-gray-600 font-medium mb-2">
+              <p className="text-gray-600 font-medium mb-2 text-sm md:text-base">
                 Let's study together to record the progress!
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs md:text-sm text-gray-500">
                 Start a study session to see your progress visualized here
               </p>
               <button 
-                className="mt-4 bg-[#3d312e] text-white px-4 py-2 rounded-md hover:bg-[#2a211e] transition-colors"
+                className="mt-4 bg-[#3d312e] text-white px-3 py-1 md:px-4 md:py-2 rounded-md hover:bg-[#2a211e] transition-colors text-sm md:text-base"
                 onClick={() => window.location.href = '/studysession'}
               >
                 Start Studying
@@ -402,8 +426,8 @@ export default function DashboardPage() {
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
-                  <XAxis dataKey="month" stroke="#3d312e" fontSize={12} />
-                  <YAxis stroke="#3d312e" fontSize={12} />
+                  <XAxis dataKey="month" stroke="#3d312e" fontSize={isMobile ? 10 : 12} />
+                  <YAxis stroke="#3d312e" fontSize={isMobile ? 10 : 12} />
                   <Tooltip 
                     formatter={(value: number) => [`${value} min`, 'Duration']}
                     labelFormatter={(label) => `Month: ${label}`}
@@ -433,25 +457,28 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Sidebar - Fixed height to match chart */}
-        <div className="flex flex-col gap-4 h-[360px]">
+        <div className="flex flex-col gap-2 md:gap-2 h-auto md:h-[360px]">
           {/* Calendar */}
-          <div className="bg-white rounded-2xl p-4 shadow-md flex-1">
+          <div className="bg-white rounded-2xl p-3 md:p-4 shadow-md flex-1">
             <div className="flex justify-between items-center mb-2">
-              <h3 className="text-md font-semibold">Calendar</h3>
+              <h3 className="text-sm md:text-md font-semibold">Calendar</h3>
               <span className="text-xs bg-[#3d312e] text-[#f0eeee] px-2 py-1 rounded-full">
-                {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                {isMobile 
+                  ? currentDate.toLocaleString('default', { month: 'short', year: '2-digit' })
+                  : currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })
+                }
               </span>
             </div>
             <div className="grid grid-cols-7 gap-1 text-center text-xs">
-              {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
                 <div key={d} className="font-semibold text-[#3d312e] py-1">
-                  {d}
+                  {isMobile ? d.charAt(0) : d.slice(0, 2)}
                 </div>
               ))}
               {calendarDays.map((day, index) => (
                 <div
                   key={index}
-                  className={`p-1 rounded relative flex items-center justify-center h-6 ${
+                  className={`p-1 rounded relative flex items-center justify-center ${isMobile ? 'h-5 text-xs' : 'h-6' } ${
                     day.isToday 
                       ? "bg-[#3d312e] text-[#f0eeee]" 
                       : day.isCurrentMonth 
@@ -469,22 +496,22 @@ export default function DashboardPage() {
           </div>
 
           {/* Image/Text/Button Block - Replaces Weather Widget */}
-          <div className="bg-white rounded-2xl p-4 shadow-md h-[140px] flex items-center">
-            <div className="w-16 h-16 mr-4 flex-shrink-0">
+          <div className="bg-white rounded-2xl p-3 md:p-3 shadow-md h-auto md:h-[140px] flex items-center mt-1 md:mt-0">
+            <div className="w-12 h-12 md:w-14 md:h-14 mr-3 md:mr-3 flex-shrink-0">
               <Image
                 src="/cat6.png"
                 alt="Are you ready to study?"
-                width={64}
-                height={64}
+                width={isMobile ? 48 : 56}
+                height={isMobile ? 48 : 56}
                 className="rounded-lg object-cover"
               />
             </div>
             <div className="flex-1">
-              <h3 className="text-md font-semibold mb-1">Study Tips</h3>
+              <h3 className="text-sm md:text-md font-semibold mb-1">Study Tips</h3>
               <p className="text-xs text-gray-600 mb-2">
                 Let's study at study session and make notes!
               </p>
-              <button className="bg-[#3d312e] text-white text-xs px-3 py-1 rounded-md hover:bg-[#2a211e] transition-colors" onClick={() => window.location.href = '/studysession'}>
+              <button className="bg-[#3d312e] text-white text-xs px-2 py-1 md:px-3 md:py-1 rounded-md hover:bg-[#2a211e] transition-colors" onClick={() => window.location.href = '/studysession'}>
                 Start Studying
               </button>
             </div>

@@ -251,13 +251,13 @@ export default function VocabularyBoard() {
   }
 
   return (  
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-[#3d312e;] mb-3">Vocabulary Study</h1>
+        <div className="text-center mb-6 md:mb-10">
+          <h1 className="text-2xl md:text-4xl font-bold text-[#3d312e] mb-3">Vocabulary Study</h1>
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 text-sm md:text-base">
               <span className="block sm:inline">{error}</span>
               <button
                 onClick={() => setError("")}
@@ -270,30 +270,32 @@ export default function VocabularyBoard() {
         </div>
 
         {/* Input form */}
-        <div className="bg-[#f0eeee] rounded-xl shadow-md p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Add New Vocabulary</h2>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Word</label>
-              <input
-                type="text"
-                placeholder="Enter word"
-                value={wordInput}
-                onChange={(e) => setWordInput(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                onKeyPress={(e) => e.key === 'Enter' && addVocab()}
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Definition</label>
-              <input
-                type="text"
-                placeholder="Enter definition"
-                value={defInput}
-                onChange={(e) => setDefInput(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                onKeyPress={(e) => e.key === 'Enter' && addVocab()}
-              />
+        <div className="bg-[#f0eeee] rounded-xl shadow-md p-4 md:p-6 mb-6 md:mb-8">
+          <h2 className="text-lg md:text-xl font-semibold text-gray-800 mb-4">Add New Vocabulary</h2>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Word</label>
+                <input
+                  type="text"
+                  placeholder="Enter word"
+                  value={wordInput}
+                  onChange={(e) => setWordInput(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  onKeyPress={(e) => e.key === 'Enter' && addVocab()}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Definition</label>
+                <input
+                  type="text"
+                  placeholder="Enter definition"
+                  value={defInput}
+                  onChange={(e) => setDefInput(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  onKeyPress={(e) => e.key === 'Enter' && addVocab()}
+                />
+              </div>
             </div>
             <div className="flex items-end">
               <button
@@ -309,90 +311,91 @@ export default function VocabularyBoard() {
 
         {/* Vocabulary cards */}
         {vocabList.length === 0 ? (
-          <div className="bg-[#f0eeee] rounded-xl shadow-md p-8 text-center">
+          <div className="bg-[#f0eeee] rounded-xl shadow-md p-6 md:p-8 text-center">
             <div className="text-gray-400 mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 md:h-16 w-12 md:w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-700 mb-2">No vocabulary added yet</h3>
-            <p className="text-gray-500">Start by adding your first word above</p>
+            <h3 className="text-base md:text-lg font-medium text-gray-700 mb-2">No vocabulary added yet</h3>
+            <p className="text-gray-500 text-sm md:text-base">Start by adding your first word above</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {vocabList.map((vocab) => {
               const step = getStepFromStatus(vocab.status);
 
-        return (
-        <div
-            key={vocab.id}
-          className={`relative bg-[#f0eeee] rounded-xl shadow-md overflow-visible transition-all hover:shadow-lg ${
-            vocab.important ? "ring-2 ring-yellow-400" : ""
-          }`}
-          >
-            {/* Hanging cat image - sits above the header */}
-            <div className="absolute -top-3 left-1 z-5">
-              <Image
-                src="/c2.png"
-                alt="Hanging cat"
-                width={74}
-                height={74}
-                className="object-contain"
-              />
-            </div>  
+              return (
+                <div
+                  key={vocab.id}
+                  className={`relative bg-[#f0eeee] rounded-xl shadow-md overflow-visible transition-all hover:shadow-lg ${
+                    vocab.important ? "ring-2 ring-yellow-400" : ""
+                  }`}
+                >
+                  {/* Hanging cat image - positioned to avoid overlap */}
+                  <div className="absolute -top-4 left-3 z-10">
+                    <div className="relative w-12 h-12 md:w-16 md:h-16">
+                      <Image
+                        src="/c2.png"
+                        alt="Hanging cat"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                  </div>  
 
-                {/* Card header */}
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    {/* Star button (left-most) */}
-                    <button
-                      onClick={() => toggleImportant(vocab.id)}
-                      className="p-1 rounded-full hover:bg-yellow-50 transition-colors"
-                    >
-                      {vocab.important ? (
-                        <StarIconSolid className="w-6 h-6 text-yellow-400" />
-                      ) : (
-                        <StarIconOutline className="w-6 h-6 text-gray-400" />
-                      )}
-                    </button>
-                    {/* Status pill */}
-                    <span className="text-xs font-medium px-2 py-1 rounded-full bg-[#bba2a2] text-[#f0eeee]">
-                      {vocab.status === "toStudy"
-                        ? "To Study"
-                        : vocab.status === "studying"
-                        ? "Studying"
-                        : "Done"}
-                    </span>
-                  </div>
+                  {/* Card header - with adjusted spacing to prevent overlap */}
+                  <div className="pt-6 pb-3 md:pt-7 md:pb-4 px-4 border-b border-gray-100 flex justify-between items-start">
+                    <div className="flex items-center gap-2 mt-1">
+                      {/* Star button with proper spacing */}
+                      <button
+                        onClick={() => toggleImportant(vocab.id)}
+                        className="p-1 rounded-full hover:bg-yellow-50 transition-colors flex-shrink-0"
+                      >
+                        {vocab.important ? (
+                          <StarIconSolid className="w-5 h-5 md:w-6 md:h-6 text-yellow-400" />
+                        ) : (
+                          <StarIconOutline className="w-5 h-5 md:w-6 md:h-6 text-gray-400" />
+                        )}
+                      </button>
+                      {/* Status pill with margin to avoid image overlap */}
+                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-[#bba2a2] text-[#f0eeee] ml-2">
+                        {vocab.status === "toStudy"
+                          ? "To Study"
+                          : vocab.status === "studying"
+                          ? "Studying"
+                          : "Done"}
+                      </span>
+                    </div>
 
-                  {/* Edit + Delete */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => editVocab(vocab.id)}
-                      className="text-indigo-600 hover:text-indigo-800 p-1 rounded-md hover:bg-indigo-50 transition-colors"
-                      title="Edit"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => deleteVocab(vocab.id)}
-                      className="text-red-600 hover:text-red-800 p-1 rounded-md hover:bg-red-50 transition-colors"
-                      title="Delete"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+                    {/* Edit + Delete buttons */}
+                    <div className="flex gap-2 mt-1">
+                      <button
+                        onClick={() => editVocab(vocab.id)}
+                        className="text-indigo-600 hover:text-indigo-800 p-1 rounded-md hover:bg-indigo-50 transition-colors"
+                        title="Edit"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => deleteVocab(vocab.id)}
+                        className="text-red-600 hover:text-red-800 p-1 rounded-md hover:bg-red-50 transition-colors"
+                        title="Delete"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                </div>
-                  
+                    
                   {/* Card content */}
-                  <div className="p-5">
-                    <div className="mb-6">
-                      <h3 className="text-xl font-bold text-gray-900 mb-1">{vocab.word}</h3>
-                      <p className="text-gray-600">{vocab.definition}</p>
+                  <div className="p-4 md:p-5">
+                    <div className="mb-4 md:mb-6">
+                      <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-1 break-words">{vocab.word}</h3>
+                      <p className="text-gray-600 text-sm md:text-base break-words">{vocab.definition}</p>
                     </div>
                     
                     {/* Progress bar with icons */}
@@ -409,15 +412,15 @@ export default function VocabularyBoard() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-[#3d312e] text-white' : 'bg-gray-100 text-gray-400'}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex items-center justify-center sm:justify-start space-x-3">
+                        <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-[#3d312e] text-white' : 'bg-gray-100 text-gray-400'}`}>
                           <span className="text-xs font-bold">1</span>
                         </div>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-[#3d312e] text-white' : 'bg-gray-100 text-gray-400'}`}>
+                        <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-[#3d312e] text-white' : 'bg-gray-100 text-gray-400'}`}>
                           <span className="text-xs font-bold">2</span>
                         </div>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-[#3d312e] text-white' : 'bg-gray-100 text-gray-400'}`}>
+                        <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-[#3d312e] text-white' : 'bg-gray-100 text-gray-400'}`}>
                           <span className="text-xs font-bold">3</span>
                         </div>
                       </div>

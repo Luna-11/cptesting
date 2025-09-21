@@ -12,7 +12,6 @@ export default function AboutUsPage() {
       <div className="slides-container">
 
         <section className="slide bg-space-gradient-1">
-
           <div className="slide-content">
             <div className="planet-image"><img src="/cat11.png" alt="cat image" /> </div>
             <h1 className="slideOneh1">HOW TO USE</h1>
@@ -22,14 +21,13 @@ export default function AboutUsPage() {
           </div>
         </section>
 
-
         <section className="slide bg-space-dark-1">
           <div className="slide-content">
             <h1 className="slideOneh1">How to use Calendar Page</h1>
             
             <div className="content-grid">
               <div className="text-content">
-                <p>The calendare page is mainly for the events arrangement. </p>
+                <p>The calendar page is mainly for the events arrangement. </p>
                 <ol className="steps-list">
                   <li>The hamster on the calendar is to show the current date.</li>
                   <li>Click on the date you would like to set an event.</li>
@@ -40,11 +38,9 @@ export default function AboutUsPage() {
                 <button className="cta-button">Go to Calendar</button>
               </div>
               <div className="planet-image"><img src="/cat5.png" alt="test image" /> </div>
-
             </div>
           </div>
         </section>
-
 
         <section className="slide bg-space-dark-2">
           <div className="slide-content">
@@ -65,7 +61,6 @@ export default function AboutUsPage() {
             </div>
           </div>
         </section>
-
 
         <section className="slide bg-space-dark-3">
           <div className="slide-content">
@@ -88,25 +83,23 @@ export default function AboutUsPage() {
           </div>
         </section>
 
-
         <section className="slide bg-space-dark-1">
           <div className="slide-content">
             <h1 className="slideOneh1">How to use To-Do-List</h1>
             
             <div className="content-grid">
               <div className="text-content">
-                <p>The calendare page is mainly for the events arrangement. </p>
+                <p>The to-do list helps you organize your daily tasks efficiently. </p>
                 <ol className="steps-list">
-                  <li>The hamster on the calendar is to show the current date.</li>
-                  <li>Click on the date you would like to set an event.</li>
-                  <li>You can add the name of the event.</li>
-                  <li>You can also choose what color you would like to see on your calendar.</li>
-                  <li>You can always update the event by clicking on the event.</li>
+                  <li>Click on the input field to add a new task.</li>
+                  <li>Press Enter or click the Add button to save your task.</li>
+                  <li>Check the checkbox when you complete a task.</li>
+                  <li>Use the edit button to modify existing tasks.</li>
+                  <li>Delete tasks you no longer need with the trash icon.</li>
                 </ol>
-                <button className="cta-button">Go to Calendar</button>
+                <button className="cta-button">Go to To-Do List</button>
               </div>
               <div className="planet-image"><img src="/cat6.png" alt="test image" /> </div>
-
             </div>
           </div>
         </section>
@@ -119,36 +112,102 @@ export default function AboutUsPage() {
              <div className="planet-image"><img src="/cat1.png" alt="test image" /> </div>
               <div className="text-content">
                 <ul className="features-list">
-                  <li>Pomodoro Timer with customizable intervals</li>
-                  <li>Study Room Creator for group sessions</li>
-                  <li>Progress Tracking dashboard</li>
-                  <li>Resource Sharing platform</li>
-                  <li>Focus analytics and reports</li>
+                  <li>Weekly study time analysis</li>
+                  <li>Productivity trends and insights</li>
+                  <li>Task completion statistics</li>
+                  <li>Focus level measurements</li>
+                  <li>Customizable report periods</li>
                 </ul>
-                <button className="cta-button">EXPLORE FEATURES</button>
+                <button className="cta-button">VIEW REPORTS</button>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="slide bg-space-dark-1">
+
+        <section className="slide bg-space-dark-3">
           <div className="slide-content">
-            <h1 className="slideOneh1">How to use Calendar Page</h1>
+            <h1 className="slideOneh1">User Profile</h1>
             
             <div className="content-grid">
               <div className="text-content">
-                <p>The calendare page is mainly for the events arrangement. </p>
+                <p>Customize your study experience with your personal profile:</p>
                 <ol className="steps-list">
-                  <li>The hamster on the calendar is to show the current date.</li>
-                  <li>Click on the date you would like to set an event.</li>
-                  <li>You can add the name of the event.</li>
-                  <li>You can also choose what color you would like to see on your calendar.</li>
-                  <li>You can always update the event by clicking on the event.</li>
+                  <li>Upload a profile picture to personalize your account</li>
+                  <li>Set your banner picutre and moti as your preferences</li>
+                  <li>Track your study session streaks</li>
+                  <li>Check the history of the notes and review them</li>
+                  <li>Adjust settings & change password for security.</li>
                 </ol>
-                <button className="cta-button">Go to Calendar</button>
+                <button className="cta-button">EDIT PROFILE</button>
               </div>
-              <div className="planet-image"><img src="/cat5.png" alt="test image" /> </div>
+              <div className="planet-image"><img src="/catback.png" alt="User profile illustration" /> </div>
+            </div>
+          </div>
+        </section>
 
+
+        <section className="slide bg-space-gradient-1">
+          <div className="slide-content">
+            <h1 className="slideOneh1">Pro Focus Sessions</h1>
+            
+            <div className="content-grid">
+              <div className="planet-image"><img src="/cat8.png" alt="Focus session illustration" /> </div>
+              <div className="text-content">
+                <p className="premium-badge">PREMIUM FEATURE</p>
+                <ul className="features-list">
+                  <li>Advanced distraction blocking during sessions</li>
+                  <li>Custom ambient sounds and focus music</li>
+                  <li>AI-powered focus coaching and tips</li>
+                  <li>Detailed session analytics and insights</li>
+                  <li>Cross-device synchronization</li>
+                  <li>Export session data for offline review</li>
+                </ul>
+                <button className="cta-button premium-button">UPGRADE NOW</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <section className="slide bg-space-dark-2">
+          <div className="slide-content">
+            <h1 className="slideOneh1">Vocabulary Study Pro</h1>
+            
+            <div className="content-grid">
+              <div className="text-content">
+                <p className="premium-badge">PREMIUM FEATURE</p>
+                <ul className="features-list">
+                  <li>Spaced repetition algorithm for optimal learning</li>
+                  <li>Pronunciation practice with voice recognition</li>
+                  <li>Progress tracking across multiple languages</li>
+                  <li>Offline mode for studying anywhere</li>
+                  <li>Sync with popular language learning apps</li>
+                </ul>
+                <button className="cta-button premium-button">TRY FREE TRIAL</button>
+              </div>
+              <div className="planet-image"><img src="/cat8.png" alt="Vocabulary study illustration" /> </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Final Slide */}
+
+
+                <section className="slide bg-space-dark-2">
+          <div className="slide-content">
+            <h1 className="slideOneh1">Ready to Study?</h1>
+            
+            <div className="content-grid">
+              <div className="text-content">
+                <p className="premium-badge">PREMIUM FEATURE</p>
+                <ul className="features-list">
+                  <li> <p className="slide-description">You're now familiar with all the features of Study-With-Me.</p></li>
+    
+                </ul>
+                <button className="cta-button premium-button">TRY FREE TRIAL</button>
+              </div>
+             <div className="planet-image"><img src="/cat4.png" alt="Happy studying illustration" /> </div>
             </div>
           </div>
         </section>

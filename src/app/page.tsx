@@ -10,7 +10,7 @@ export default function HomePage() {
         <main className="flex-1 flex items-center justify-center p-8 max-w-[90%]">
           <div className="grid grid-cols-2 gap-8 items-center w-full">
             {/* Right Side: Text Content */}
-            <div className="pl-4 flex flex-col justify-center h-full"> {/* Added flex and justify-center */}
+            <div className="pl-4 flex flex-col justify-center h-full"> 
               <h1 className="text-4xl font-bold">Why Choose Study-With-Me?</h1>
               <p className="mt-4 text-lg text-gray-600">
                 Our app was designed to help you get the most out of your study sessions, 
@@ -37,7 +37,7 @@ export default function HomePage() {
         </main>
       </div>
 
-      {/* Service Section - Card with Header to the Right */}
+      {/* Service Section */}
       <div className="mt-16 px-8">
         <div className="flex-1 justify-center">
           <div className="grid grid-cols-2 gap-8 items-start w-full max-w-[90%]"> {/* Changed items-center to items-start */}

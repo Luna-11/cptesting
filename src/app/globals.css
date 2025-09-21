@@ -295,8 +295,8 @@ body {
   margin-bottom: 0.5rem;
   line-height: 1;
 }
-.slideOneh1
-{
+
+.slideOneh1 {
   font-size: 3rem;
 }
 
@@ -425,4 +425,188 @@ body {
 
 .bg-space-dark-3 {
   background-color: #3d312e;
+}
+
+/* ===== RESPONSIVE STYLES ===== */
+
+/* Tablet Styles (768px - 1024px) */
+@media (max-width: 1024px) {
+  .slide {
+    padding: 0.5rem 1.5rem;
+  }
+  
+  .slideOneh1 {
+    font-size: 2.5rem;
+  }
+  
+  .slide-title {
+    font-size: 3rem;
+  }
+  
+  .slide-subtitle {
+    font-size: 2rem;
+  }
+  
+  .slide-description {
+    font-size: 1.1rem;
+    max-width: 500px;
+  }
+  
+  .content-grid {
+    gap: 2rem;
+  }
+  
+  .planet-image img {
+    max-width: 400px;
+    max-height: 400px;
+  }
+  
+  .bg-space-gradient-1 .planet-image img {
+    max-width: 350px;
+    max-height: 350px;
+  }
+  
+  .steps-list li,
+  .features-list li {
+    font-size: 1rem;
+  }
+  
+  .cta-button {
+    padding: 0.8rem 1.6rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Mobile Styles (up to 767px) */
+@media (max-width: 767px) {
+  .slide {
+    padding: 0.5rem 1rem;
+    height: auto;
+    min-height: 100vh;
+  }
+  
+  .slides-container {
+    scroll-snap-type: none;
+    height: auto;
+    overflow-y: auto;
+  }
+  
+  .slide-content {
+    padding: 2rem 0;
+  }
+  
+  .slideOneh1 {
+    font-size: 2rem;
+    text-align: center;
+  }
+  
+  .slide-title {
+    font-size: 2.5rem;
+    text-align: center;
+  }
+  
+  .slide-subtitle {
+    font-size: 1.8rem;
+    text-align: center;
+  }
+  
+  .slide-description {
+    font-size: 1rem;
+    text-align: center;
+    max-width: 100%;
+    margin-bottom: 2rem;
+  }
+  
+  .content-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .text-content {
+    max-width: 100%;
+    text-align: center;
+    order: 2;
+  }
+  
+  .planet-image {
+    order: 1;
+    margin: 1rem 0;
+  }
+  
+  .planet-image img {
+    max-width: 280px;
+    max-height: 280px;
+  }
+  
+  .bg-space-gradient-1 .planet-image img {
+    max-width: 250px;
+    max-height: 250px;
+  }
+  
+  .steps-list,
+  .features-list {
+    margin: 1.5rem 0;
+    padding-left: 1rem;
+  }
+  
+  .steps-list li,
+  .features-list li {
+    font-size: 0.9rem;
+    margin-bottom: 0.8rem;
+    text-align: left;
+  }
+  
+  .cta-button {
+    padding: 0.7rem 1.4rem;
+    font-size: 0.9rem;
+    margin-top: 1.5rem;
+  }
+  
+  /* Adjust first slide specifically for mobile */
+  .bg-space-gradient-1 .slide-content {
+    text-align: center;
+  }
+  
+  /* Adjust list item markers for dark backgrounds */
+  .bg-space-dark-3 .steps-list li::before {
+    color: #f0eeee;
+  }
+  
+  .bg-space-dark-2 .features-list li::before {
+    color: #3d312e;
+  }
+}
+
+/* Small Mobile Styles (up to 480px) */
+@media (max-width: 480px) {
+  .slide {
+    padding: 0.5rem 0.8rem;
+  }
+  
+  .slideOneh1 {
+    font-size: 1.8rem;
+  }
+  
+  .slide-title {
+    font-size: 2rem;
+  }
+  
+  .slide-subtitle {
+    font-size: 1.5rem;
+  }
+  
+  .planet-image img {
+    max-width: 220px;
+    max-height: 220px;
+  }
+  
+  .bg-space-gradient-1 .planet-image img {
+    max-width: 200px;
+    max-height: 200px;
+  }
+  
+  .cta-button {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.8rem;
+  }
 }

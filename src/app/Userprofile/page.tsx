@@ -54,8 +54,7 @@ export default function ProfilePage() {
   const [studyStreaks, setStudyStreaks] = useState<{ date: string; hours: number }[]>([])
   const [selectedNote, setSelectedNote] = useState<StudyNote | null>(null)
 
-  // Helper function to generate study streaks
-// Helper function to generate study streaks from raw API data
+
 const generateStudyStreaks = (studySessions: any[]) => {
   const streaksMap: Record<string, number> = {};
 
@@ -66,7 +65,7 @@ const generateStudyStreaks = (studySessions: any[]) => {
                 new Date().toISOString().split('T')[0];
     
     // Calculate actual duration in hours if available, otherwise count as 1 hour
-    let hours = 1; // Default to 1 hour
+    let hours = 1; 
     
     if (session.start_time && session.end_time) {
       try {

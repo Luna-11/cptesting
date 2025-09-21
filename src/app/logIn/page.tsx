@@ -14,37 +14,65 @@ export default function Login() {
   const [remainingTime, setRemainingTime] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Check for existing failed attempts and cooldown on component mount
+  // --- Helpers ---
+  const parseLoginError = (data: any, res?: Response) => {
+    const raw = (data?.message || '').toLowerCase();
+
+    if (data?.field === 'username') return 'Incorrect username';
+    if (data?.field === 'password') return 'Incorrect password';
+
+    if (raw.includes('username') || raw.includes('user') || raw.includes('account') || raw.includes('not found')) {
+      return 'Incorrect username';
+    }
+    if (raw.includes('password') || raw.includes('invalid password') || raw.includes('wrong password')) {
+      return 'Incorrect password';
+    }
+    if (raw.includes('credential') || raw.includes('credentials') || raw.includes('incorrect')) {
+      return 'Incorrect username or password';
+    }
+
+    if (res && !res.ok) return 'Incorrect username or password';
+    return data?.message || 'Login failed';
+  };
+
+  const incrementFailedAttempts = () => {
+    const current = parseInt(localStorage.getItem('loginFailedAttempts') || '0', 10);
+    const next = current + 1;
+    localStorage.setItem('loginFailedAttempts', next.toString());
+    setFailedAttempts(next);
+    return next;
+  };
+
+  // Load stored attempts/cooldown
   useEffect(() => {
     const storedAttempts = localStorage.getItem('loginFailedAttempts');
     const storedCooldown = localStorage.getItem('loginCooldownEndTime');
-    
+
     if (storedAttempts) {
       setFailedAttempts(parseInt(storedAttempts));
     }
-    
+
     if (storedCooldown) {
       const endTime = new Date(parseInt(storedCooldown));
       if (endTime > new Date()) {
         setCooldownEndTime(endTime);
       } else {
-        // Clear expired cooldown
         localStorage.removeItem('loginCooldownEndTime');
         localStorage.removeItem('loginFailedAttempts');
       }
     }
   }, []);
 
-  // Countdown timer for cooldown period
+  // Cooldown countdown
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    
+
     if (cooldownEndTime) {
       interval = setInterval(() => {
         const now = new Date();
         const timeRemaining = Math.max(0, cooldownEndTime.getTime() - now.getTime());
         setRemainingTime(Math.ceil(timeRemaining / 1000));
-        
+
         if (timeRemaining <= 0) {
           clearInterval(interval);
           setCooldownEndTime(null);
@@ -55,7 +83,7 @@ export default function Login() {
         }
       }, 1000);
     }
-    
+
     return () => {
       if (interval) clearInterval(interval);
     };
@@ -67,8 +95,7 @@ export default function Login() {
       ...prev,
       [name]: value
     }));
-    
-    // Clear error message when user starts typing
+
     if (errorMessage) {
       setErrorMessage('');
     }
@@ -76,104 +103,75 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check if user is in cooldown period
+
     if (cooldownEndTime && new Date() < cooldownEndTime) {
       setErrorMessage(`Please wait ${Math.ceil(remainingTime / 60)} minutes before trying again.`);
       return;
     }
-    
-    // Basic validation - check if fields are empty
+
     if (!formData.username.trim() && !formData.password) {
       setErrorMessage('Please enter your username and password.');
       return;
     }
-    
     if (!formData.username.trim()) {
       setErrorMessage('Please enter your username.');
       return;
     }
-    
     if (!formData.password) {
       setErrorMessage('Please enter your password.');
       return;
     }
-    
+
     setIsLoading(true);
     setErrorMessage('');
-    
+
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
         credentials: 'include'
       });
 
       const data = await res.json();
 
-      if (res.ok && data.success) {
-        // Reset failed attempts on successful login
+      if (res.ok && data?.success) {
         setFailedAttempts(0);
-        setErrorMessage('');
         localStorage.removeItem('loginFailedAttempts');
         localStorage.removeItem('loginCooldownEndTime');
-        
-        // Redirect to root page, middleware will handle the final redirection
+        setErrorMessage('');
         window.location.href = '/';
-      } else {
-        // Increment failed attempts
-        const newAttempts = failedAttempts + 1;
-        setFailedAttempts(newAttempts);
-        localStorage.setItem('loginFailedAttempts', newAttempts.toString());
-        
-        // Determine the specific error
-        let specificError = 'Login failed';
-        
-        // Check if the API response indicates which field is wrong
-        if (data.message) {
-          const message = data.message.toLowerCase();
-          
-          if (message.includes('user') || message.includes('username') || message.includes('account') || message.includes('not found')) {
-            specificError = 'Incorrect username';
-          } else if (message.includes('password') || message.includes('invalid credential') || message.includes('incorrect')) {
-            specificError = 'Incorrect password';
-          } else {
-            specificError = data.message;
-          }
-        }
-        
-        // Show specific error message with attempts remaining
-        const attemptsRemaining = 3 - newAttempts;
-        if (attemptsRemaining > 0) {
-          setErrorMessage(`${specificError}. ${attemptsRemaining} attempt${attemptsRemaining !== 1 ? 's' : ''} remaining.`);
-        } else {
-          setErrorMessage(`${specificError}. No attempts remaining.`);
-        }
-        
-        if (newAttempts >= 3) {
-          // Set cooldown period of 3 minutes
-          const endTime = new Date(Date.now() + 3 * 60 * 1000);
-          setCooldownEndTime(endTime);
-          setErrorMessage('Too many failed attempts. Please wait 3 minutes before trying again.');
-          localStorage.setItem('loginCooldownEndTime', endTime.getTime().toString());
-        }
+        return;
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      const newAttempts = failedAttempts + 1;
-      setFailedAttempts(newAttempts);
-      localStorage.setItem('loginFailedAttempts', newAttempts.toString());
-      
-      const attemptsRemaining = 3 - newAttempts;
+
+      const newAttempts = incrementFailedAttempts();
+      const specificError = parseLoginError(data, res);
+      const attemptsRemaining = Math.max(0, 3 - newAttempts);
+
+      if (attemptsRemaining > 0) {
+        setErrorMessage(`${specificError}. ${attemptsRemaining} attempt${attemptsRemaining !== 1 ? 's' : ''} remaining.`);
+      } else {
+        setErrorMessage(`${specificError}. No attempts remaining.`);
+      }
+
+      if (newAttempts >= 3) {
+        const endTime = new Date(Date.now() + 3 * 60 * 1000);
+        setCooldownEndTime(endTime);
+        setErrorMessage('Too many failed attempts. Please wait 3 minutes before trying again.');
+        localStorage.setItem('loginCooldownEndTime', endTime.getTime().toString());
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+
+      const newAttempts = incrementFailedAttempts();
+      const attemptsRemaining = Math.max(0, 3 - newAttempts);
+
       if (attemptsRemaining > 0) {
         setErrorMessage(`Network error. Please try again. ${attemptsRemaining} attempt${attemptsRemaining !== 1 ? 's' : ''} remaining.`);
       } else {
         setErrorMessage('Network error. No attempts remaining.');
       }
-      
+
       if (newAttempts >= 3) {
         const endTime = new Date(Date.now() + 3 * 60 * 1000);
         setCooldownEndTime(endTime);
@@ -185,22 +183,20 @@ export default function Login() {
     }
   };
 
-  // Format remaining time for display
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
   };
 
-  // Helper function to check if cooldown is active
   const isCooldownActive = () => {
     return cooldownEndTime !== null && new Date() < cooldownEndTime;
   };
 
   return (
-    <div className="w-screen min-h-screen flex flex-col md:flex-row font-sans bg-[#3d312e] overflow-x-hidden">
-      {/* Left Panel - Branding */}
-      <div className="w-full md:w-1/2 flex flex-col justify-center items-center p-10 md:p-16 bg-[#f0eeee]">
+    <div className="w-screen min-h-screen flex flex-col justify-center md:flex-row font-sans bg-[#3d312e] overflow-x-hidden">
+      {/* Left Panel */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-10 md:p-16 bg-[#f0eeee]">
         <div className="flex items-center mb-8">
           <Image 
             src="/transparentLogo.png"
@@ -214,18 +210,31 @@ export default function Login() {
         <p className="text-[#948585] mb-6 text-center">Optimize your learning routine with us</p>
       </div>
 
-      {/* Right Panel - Form */}
-      <div className="w-full md:w-1/2 flex justify-center items-center p-8 md:p-12 bg-[#3d312e]">
-        <div className="bg-white rounded-xl shadow-lg p-8 md:p-10 w-full max-w-md">
-          <form onSubmit={handleSubmit}>
-            <h2 className="text-3xl font-bold mb-6 text-[#3d312e] text-center">Log in</h2>
-            <p className="mb-6 text-sm text-[#948585] text-center">
-              Please enter your credentials. <br />
-              Won't be shared publicly.
-            </p>
+      {/* Right Panel */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-4 py-4 sm:py-6 md:py-8 lg:p-12 bg-[#3d312e]">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-5 md:p-6 w-full max-w-md mx-auto">
+          {/* Mobile Logo */}
+          <div className="lg:hidden flex justify-center mb-4 sm:mb-5">
+            <Image 
+              src="/transparentLogo.png"
+              alt="StudyFlow Logo"
+              width={160}
+              height={48}
+              className="object-contain"
+            />
+          </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="text-center">
+              <h2 className="text-2xl sm:text-2xl md:text-3xl font-bold text-[#3d312e]">Log in</h2>
+              <p className="text-sm text-[#948585] mt-2">
+                Please enter your credentials. <br />
+                Won't be shared publicly.
+              </p>
+            </div>
 
             {errorMessage && (
-              <div className={`mb-4 p-3 rounded text-center text-sm ${
+              <div className={`p-3 rounded text-center text-sm ${
                 isCooldownActive()
                   ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
                   : errorMessage.includes('Please enter your') 
@@ -234,42 +243,44 @@ export default function Login() {
               }`}>
                 {errorMessage}
                 {isCooldownActive() && (
-                  <div className="mt-2 font-medium">Time remaining: {formatTime(remainingTime)}</div>
+                  <div className="mt-1 font-medium text-xs">Time remaining: {formatTime(remainingTime)}</div>
                 )}
               </div>
             )}
 
-            <input
-              type="text"
-              name="username"
-              placeholder="Username"
-              value={formData.username}
-              onChange={handleChange}
-              className="w-full p-3 mb-4 bg-white border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-[#3d312e] placeholder-gray-400 text-gray-700"
-              required
-              disabled={isLoading || isCooldownActive()}
-            />
+            <div className="space-y-3">
+              <input
+                type="text"
+                name="username"
+                placeholder="Username"
+                value={formData.username}
+                onChange={handleChange}
+                className="w-full p-3 bg-white border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-[#3d312e] placeholder-gray-400 text-gray-700 text-sm sm:text-base"
+                required
+                disabled={isLoading || isCooldownActive()}
+              />
 
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full p-3 mb-6 bg-white border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-[#3d312e] placeholder-gray-400 text-gray-700"
-              required
-              disabled={isLoading || isCooldownActive()}
-            />
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full p-3 bg-white border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-[#3d312e] placeholder-gray-400 text-gray-700 text-sm sm:text-base"
+                required
+                disabled={isLoading || isCooldownActive()}
+              />
+            </div>
 
             <button
               type="submit"
               disabled={isLoading || isCooldownActive()}
-              className="w-full bg-[#3d312e] text-white py-3 rounded hover:bg-[#4a3c38] transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-[#3d312e] text-white py-3 rounded hover:bg-[#4a3c38] transition font-medium disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             >
               {isLoading ? 'Logging in...' : 'Log in'}
             </button>
 
-            <p className="text-center mt-6 text-gray-600 text-sm">
+            <p className="text-center text-gray-600 text-xs sm:text-sm">
               Don't have an account?{' '}
               <a href="/register" className="text-[#3d312e] hover:underline">Register</a>
             </p>

@@ -66,7 +66,7 @@ const PaymentPage = () => {
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        setPreview(reader.result); // This will be the full data URL with prefix
+        setPreview(reader.result);
       }
     };
     reader.readAsDataURL(file);
@@ -79,7 +79,6 @@ const PaymentPage = () => {
     setUploadSuccess(false);
     
     try {
-      // Use the FULL base64 data URL (including the data:image/ prefix)
       const response = await fetch('/api/payments', {
         method: 'POST',
         headers: {
@@ -89,7 +88,7 @@ const PaymentPage = () => {
           methodId: selectedMethod === "KBZPay" ? 1 : 2,
           months: selectedMonths,
           amount: calculatePrice(selectedMonths),
-          receiptImage: preview // Send the complete data URL
+          receiptImage: preview
         }),
       });
 
@@ -101,9 +100,8 @@ const PaymentPage = () => {
 
       if (result.success) {
         setUploadSuccess(true);
-        setPreview(""); // Clear preview after successful upload
+        setPreview("");
         
-        // Refresh purchase history
         const refreshResponse = await fetch('/api/payments');
         const refreshData = await refreshResponse.json();
         
@@ -136,66 +134,66 @@ const PaymentPage = () => {
   const decrementMonths = () => setSelectedMonths(prev => Math.max(prev - 1, 1));
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 bg-[#f0eeee] min-h-screen">
-      <h1 className="text-3xl font-semibold mb-6 text-[#3d312e] crimson-text-bold">Upgrade to Pro Plan</h1>
+    <div className="max-w-3xl mx-auto px-3 sm:px-4 py-6 sm:py-8 bg-[#f0eeee] min-h-screen overflow-x-hidden">
+      <h1 className="text-2xl sm:text-3xl font-semibold mb-4 sm:mb-6 text-[#3d312e] crimson-text-bold">Upgrade to Pro Plan</h1>
       
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-8 border border-[#bba2a2]">
-        <h2 className="text-xl font-bold mb-4 text-[#3d312e] crimson-text-semibold">Subscription Options</h2>
+      <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 sm:mb-8 border border-[#bba2a2]">
+        <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-[#3d312e] crimson-text-semibold">Subscription Options</h2>
         
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <label className="block text-sm font-medium text-[#3d312e] mb-3">
             Select Duration:
           </label>
           
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex items-center border border-[#bba2a2] rounded-lg overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="flex items-center border border-[#bba2a2] rounded-lg overflow-hidden self-start">
               <button 
                 onClick={decrementMonths}
-                className="px-3 py-1 bg-[#f0eeee] text-[#3d312e] hover:bg-[#bba2a2] hover:text-[#f0eeee] transition"
+                className="px-3 py-2 sm:py-1 bg-[#f0eeee] text-[#3d312e] hover:bg-[#bba2a2] hover:text-[#f0eeee] transition min-w-[44px]"
                 disabled={selectedMonths <= 1}
               >
                 -
               </button>
-              <div className="px-4 py-1 bg-white text-center min-w-[50px]">
+              <div className="px-4 py-2 sm:py-1 bg-white text-center min-w-[60px] text-sm sm:text-base">
                 {selectedMonths}
               </div>
               <button 
                 onClick={incrementMonths}
-                className="px-3 py-1 bg-[#f0eeee] text-[#3d312e] hover:bg-[#bba2a2] hover:text-[#f0eeee] transition"
+                className="px-3 py-2 sm:py-1 bg-[#f0eeee] text-[#3d312e] hover:bg-[#bba2a2] hover:text-[#f0eeee] transition min-w-[44px]"
                 disabled={selectedMonths >= 12}
               >
                 +
               </button>
             </div>
-            <span className="text-[#3d312e]">months</span>
+            <span className="text-[#3d312e] text-sm sm:text-base">months</span>
           </div>
           
-          <div className="mb-4 p-4 bg-[#f0eeee] rounded-lg">
-            <div className="flex justify-between items-center mb-2">
+          <div className="mb-4 p-3 sm:p-4 bg-[#f0eeee] rounded-lg">
+            <div className="flex justify-between items-center mb-2 text-sm sm:text-base">
               <span className="text-[#3d312e]">Monthly Price:</span>
               <span className="font-medium">${MONTHLY_PRICE}</span>
             </div>
-            <div className="flex justify-between items-center mb-2">
+            <div className="flex justify-between items-center mb-2 text-sm sm:text-base">
               <span className="text-[#3d312e]">Duration:</span>
               <span className="font-medium">
                 {selectedMonths} month{selectedMonths > 1 ? 's' : ''}
               </span>
             </div>
             <div className="border-t border-[#bba2a2] my-2"></div>
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-bold text-[#3d312e]">Total Amount:</span>
-              <span className="text-xl font-bold text-[#3d312e]">
+            <div className="flex justify-between items-center text-sm sm:text-base">
+              <span className="font-bold text-[#3d312e]">Total Amount:</span>
+              <span className="text-lg font-bold text-[#3d312e]">
                 ${calculatePrice(selectedMonths)}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <h3 className="text-md font-medium mb-3 text-[#3d312e]">Transfer to:</h3>
-          <div className="flex gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4">
             <button
-              className={`px-4 py-2 rounded-lg border ${
+              className={`px-3 py-2 sm:px-4 sm:py-2 rounded-lg border text-sm sm:text-base text-center min-h-[44px] ${
                 selectedMethod === "KBZPay"
                   ? "bg-[#bba2a2] border-[#3d312e] text-[#f0eeee]"
                   : "border-[#bba2a2] text-[#3d312e]"
@@ -205,7 +203,7 @@ const PaymentPage = () => {
               KBZPay: 09424979727
             </button>
             <button
-              className={`px-4 py-2 rounded-lg border ${
+              className={`px-3 py-2 sm:px-4 sm:py-2 rounded-lg border text-sm sm:text-base text-center min-h-[44px] ${
                 selectedMethod === "WavePay"
                   ? "bg-[#bba2a2] border-[#3d312e] text-[#f0eeee]"
                   : "border-[#bba2a2] text-[#3d312e]"
@@ -226,11 +224,11 @@ const PaymentPage = () => {
                 <img 
                   src={preview} 
                   alt="Payment receipt" 
-                  className="max-h-64 rounded-lg border"
+                  className="max-h-48 sm:max-h-64 rounded-lg border mx-auto sm:mx-0"
                 />
 
-                <div className="flex gap-2">
-                  <label className="inline-flex items-center gap-2 px-4 py-2 bg-[#f0eeee] text-[#3d312e] text-sm rounded cursor-pointer hover:bg-[#bba2a2] hover:text-[#f0eeee] transition">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <label className="inline-flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-[#f0eeee] text-[#3d312e] text-sm rounded cursor-pointer hover:bg-[#bba2a2] hover:text-[#f0eeee] transition min-h-[44px]">
                     Change Image
                     <input
                       type="file"
@@ -243,7 +241,7 @@ const PaymentPage = () => {
                     <button
                       onClick={handleUpload}
                       disabled={isUploading}
-                      className="px-4 py-2 bg-[#3d312e] text-[#f0eeee] text-sm rounded hover:bg-[#bba2a2] transition disabled:bg-[#bba2a2] disabled:opacity-70"
+                      className="px-3 py-2 sm:px-4 sm:py-2 bg-[#3d312e] text-[#f0eeee] text-sm rounded hover:bg-[#bba2a2] transition disabled:bg-[#bba2a2] disabled:opacity-70 min-h-[44px]"
                     >
                       {isUploading ? "Uploading..." : "Confirm Payment"}
                     </button>
@@ -251,7 +249,7 @@ const PaymentPage = () => {
                 </div>
               </div>
             ) : (
-              <label className="inline-flex items-center gap-2 px-4 py-2 bg-[#3d312e] text-[#f0eeee] text-sm rounded cursor-pointer hover:bg-[#bba2a2] transition">
+              <label className="inline-flex items-center justify-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-[#3d312e] text-[#f0eeee] text-sm rounded cursor-pointer hover:bg-[#bba2a2] transition min-h-[44px]">
                 Choose File
                 <input
                   type="file"
@@ -263,7 +261,7 @@ const PaymentPage = () => {
             )}
             
             {uploadSuccess && (
-              <div className="mt-3 p-3 bg-green-100 text-green-800 rounded-lg">
+              <div className="mt-3 p-3 bg-green-100 text-green-800 rounded-lg text-sm">
                 Receipt uploaded successfully! Your payment is under review.
               </div>
             )}
@@ -271,67 +269,69 @@ const PaymentPage = () => {
         </div>
       </div>
       
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-[#bba2a2]">
-        <h2 className="text-xl font-bold mb-4 text-[#3d312e] crimson-text-semibold">Purchase History</h2>
+      <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 border border-[#bba2a2]">
+        <h2 className="text-lg sm:text-xl font-bold mb-4 text-[#3d312e] crimson-text-semibold">Purchase History</h2>
         
         {isLoading ? (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#3d312e]"></div>
           </div>
         ) : purchases.length === 0 ? (
-          <p className="text-[#3d312e]">No purchase history found.</p>
+          <p className="text-[#3d312e] text-sm sm:text-base">No purchase history found.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-[#bba2a2]">
-              <thead className="bg-[#f0eeee]">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Plan</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Duration</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Method</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Receipt</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-[#bba2a2]">
-                {purchases.map((purchase) => (
-                  <tr key={purchase.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#3d312e]">{purchase.planName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#3d312e]">{purchase.months} month{purchase.months > 1 ? 's' : ''}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#3d312e]">${purchase.amount}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#3d312e]">
-                      {new Date(purchase.date).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${purchase.status === "Approved" ? "bg-green-100 text-green-800" : 
-                          purchase.status === "Rejected" ? "bg-red-100 text-red-800" : 
-                          "bg-yellow-100 text-yellow-800"}`}>
-                        {purchase.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#3d312e]">
-                      {purchase.paymentMethod || "-"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#3d312e]">
+          <div className="space-y-4">
+            {purchases.map((purchase) => (
+              <div key={purchase.id} className="border border-[#bba2a2] rounded-lg p-4 bg-[#fafafa]">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="font-medium text-[#3d312e]">Plan:</span>
+                    <p className="text-[#3d312e]">{purchase.planName}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-[#3d312e]">Duration:</span>
+                    <p className="text-[#3d312e]">{purchase.months} month{purchase.months > 1 ? 's' : ''}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-[#3d312e]">Amount:</span>
+                    <p className="text-[#3d312e]">${purchase.amount}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-[#3d312e]">Date:</span>
+                    <p className="text-[#3d312e]">{new Date(purchase.date).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-[#3d312e]">Status:</span>
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                      ${purchase.status === "Approved" ? "bg-green-100 text-green-800" : 
+                        purchase.status === "Rejected" ? "bg-red-100 text-red-800" : 
+                        "bg-yellow-100 text-yellow-800"}`}>
+                      {purchase.status}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-[#3d312e]">Method:</span>
+                    <p className="text-[#3d312e]">{purchase.paymentMethod || "-"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-medium text-[#3d312e]">Receipt:</span>
+                    <p className="text-[#3d312e]">
                       {purchase.receiptUrl ? (
                         <a 
                           href={purchase.receiptUrl} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 underline"
+                          className="text-blue-600 hover:text-blue-800 underline text-sm"
                         >
-                          View
+                          View Receipt
                         </a>
                       ) : (
                         "-"
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -167,7 +167,6 @@ useEffect(() => {
   }, [])
 
   // Study Streak Calendar Component
-// Study Streak Calendar Component
 const StudyStreakCalendar = () => {
   const currentDate = new Date()
   const currentMonth = currentDate.getMonth()
@@ -215,19 +214,19 @@ const getStudyHours = (day: number) => {
 
   return (
     <div className="space-y-2">
-      <h4 className="font-medium text-[#3d312e]">
+      <h4 className="font-medium text-[#3d312e] text-sm md:text-base">
         {new Date().toLocaleString('default', { month: 'long' })} {currentYear} • {studyStreaks.filter((d) => d.hours > 0).length} study days
       </h4>
       
       {/* Day headers */}
       <div className="grid grid-cols-7 gap-1 mb-1 text-xs text-center text-gray-500">
-        <div>Sun</div>
-        <div>Mon</div>
-        <div>Tue</div>
-        <div>Wed</div>
-        <div>Thu</div>
-        <div>Fri</div>
-        <div>Sat</div>
+        <div className="text-[10px] md:text-xs">Sun</div>
+        <div className="text-[10px] md:text-xs">Mon</div>
+        <div className="text-[10px] md:text-xs">Tue</div>
+        <div className="text-[10px] md:text-xs">Wed</div>
+        <div className="text-[10px] md:text-xs">Thu</div>
+        <div className="text-[10px] md:text-xs">Fri</div>
+        <div className="text-[10px] md:text-xs">Sat</div>
       </div>
       
       <div className="grid grid-cols-7 gap-1">
@@ -236,7 +235,7 @@ const getStudyHours = (day: number) => {
             return (
               <div
                 key={`empty-${index}`}
-                className="h-8 rounded-sm bg-transparent"
+                className="h-6 md:h-8 rounded-sm bg-transparent"
               />
             )
           }
@@ -247,8 +246,8 @@ const getStudyHours = (day: number) => {
           return (
             <div
               key={day}
-              className={`h-8 rounded-sm ${getColor(hours)} flex items-center justify-center text-xs ${
-                isToday ? "ring-2 ring-blue-500" : ""
+              className={`h-6 md:h-8 rounded-sm ${getColor(hours)} flex items-center justify-center text-[10px] md:text-xs ${
+                isToday ? "ring-1 md:ring-2 ring-blue-500" : ""
               }`}
               title={`${day}/${currentMonth + 1}: ${hours} hour(s)`}
             >
@@ -256,18 +255,19 @@ const getStudyHours = (day: number) => {
                 <span className="font-bold">{day}</span>
               ) : (
                 day
-              )}
+              )
+              }
             </div>
           )
         })}
       </div>
       
-      <div className="flex justify-between text-xs text-gray-500 mt-2">
+      <div className="flex justify-between text-[10px] md:text-xs text-gray-500 mt-2">
         <span>Less</span>
         <div className="flex space-x-1">
-          <div className="w-4 h-4 bg-blue-100 rounded-sm"></div>
-          <div className="w-4 h-4 bg-blue-300 rounded-sm"></div>
-          <div className="w-4 h-4 bg-blue-500 rounded-sm"></div>
+          <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-100 rounded-sm"></div>
+          <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-300 rounded-sm"></div>
+          <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-500 rounded-sm"></div>
         </div>
         <span>More</span>
       </div>
@@ -303,18 +303,18 @@ const getStudyHours = (day: number) => {
 
     return (
       <div
-        className="h-48 bg-cover bg-center flex items-center justify-center relative"
+        className="h-32 md:h-48 bg-cover bg-center flex items-center justify-center relative"
         style={{ backgroundImage: `url(${bannerData.image})` }}
       >
         <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         <button
           onClick={() => setIsEditingBanner(true)}
-          className="absolute top-4 right-4 z-20 bg-white p-2 rounded-full shadow-md hover:bg-gray-100 transition"
+          className="absolute top-2 right-2 md:top-4 md:right-4 z-20 bg-white p-1 md:p-2 rounded-full shadow-md hover:bg-gray-100 transition"
           title="Edit banner"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5 text-[#3d312e]"
+            className="h-4 w-4 md:h-5 md:w-5 text-[#3d312e]"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -327,7 +327,7 @@ const getStudyHours = (day: number) => {
             />
           </svg>
         </button>
-        <h1 className="text-[#f0eeee] text-4xl font-bold text-center relative z-10 px-4">
+        <h1 className="text-[#f0eeee] text-xl md:text-4xl font-bold text-center relative z-10 px-4">
           <div>{renderHighlightedText(firstLine)}</div>
           <div>{renderHighlightedText(secondLine)}</div>
         </h1>
@@ -384,13 +384,13 @@ const getStudyHours = (day: number) => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" key="banner-modal">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-[#3d312e]">Edit Banner</h3>
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto mx-4">
+          <div className="flex justify-between items-center p-4 border-b">
+            <h3 className="text-lg md:text-xl font-bold text-[#3d312e]">Edit Banner</h3>
             <button onClick={() => setIsEditingBanner(false)} className="text-[#3d312e] hover:text-[#2a221f]">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
+                className="h-5 w-5 md:h-6 md:w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -400,14 +400,14 @@ const getStudyHours = (day: number) => {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="p-4 md:p-6">
             <div className="space-y-4">
               <div>
                 <label className="block text-[#3d312e] text-sm font-medium mb-1">Banner Image</label>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col md:flex-row md:items-center gap-4">
                   <label className="cursor-pointer">
                     <input type="file" accept="image/*" onChange={handleBannerImageChange} className="hidden" />
-                    <div className="px-4 py-2 border border-[#bba2a2] rounded-md text-sm bg-white hover:bg-[#f0eeee] transition">
+                    <div className="px-4 py-2 border border-[#bba2a2] rounded-md text-sm bg-white hover:bg-[#f0eeee] transition text-center">
                       Change Image
                     </div>
                   </label>
@@ -415,7 +415,7 @@ const getStudyHours = (day: number) => {
                     <img
                       src={editBannerData.image || "/placeholder.svg"}
                       alt="Banner preview"
-                      className="h-12 w-24 object-cover rounded-md"
+                      className="h-12 w-24 object-cover rounded-md mt-2 md:mt-0"
                     />
                   )}
                 </div>
@@ -437,7 +437,7 @@ const getStudyHours = (day: number) => {
                 </div>
                 <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
                   <h4 className="font-medium mb-1">Preview:</h4>
-                  <div className="text-center text-lg">
+                  <div className="text-center text-sm md:text-lg">
                     {(() => {
                       const { firstLine, secondLine } = splitPreviewText(editBannerData.text)
                       return (
@@ -452,7 +452,7 @@ const getStudyHours = (day: number) => {
               </div>
             </div>
 
-            <div className="flex gap-2 mt-6">
+            <div className="flex flex-col md:flex-row gap-2 mt-6">
               <button
                 type="button"
                 onClick={() => setIsEditingBanner(false)}
@@ -526,13 +526,13 @@ const getStudyHours = (day: number) => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" key="password-modal">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-[#3d312e]">Change Password</h3>
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+          <div className="flex justify-between items-center p-4 border-b">
+            <h3 className="text-lg md:text-xl font-bold text-[#3d312e]">Change Password</h3>
             <button onClick={() => setIsEditingPassword(false)} className="text-[#3d312e] hover:text-[#2a221f]">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
+                className="h-5 w-5 md:h-6 md:w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -542,7 +542,7 @@ const getStudyHours = (day: number) => {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="p-4 md:p-6">
             <div className="space-y-4">
               <div>
                 <label className="block text-[#3d312e] text-sm font-medium mb-1">Current Password</label>
@@ -577,7 +577,7 @@ const getStudyHours = (day: number) => {
               </div>
             </div>
 
-            <div className="flex gap-2 mt-6">
+            <div className="flex flex-col md:flex-row gap-2 mt-6">
               <button
                 type="button"
                 onClick={() => setIsEditingPassword(false)}
@@ -645,13 +645,13 @@ const getStudyHours = (day: number) => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" key="about-modal">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-[#3d312e]">Edit About Me</h3>
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+          <div className="flex justify-between items-center p-4 border-b">
+            <h3 className="text-lg md:text-xl font-bold text-[#3d312e]">Edit About Me</h3>
             <button onClick={() => setIsEditingAbout(false)} className="text-[#3d312e] hover:text-[#2a221f]">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
+                className="h-5 w-5 md:h-6 md:w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -661,7 +661,7 @@ const getStudyHours = (day: number) => {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="p-4 md:p-6">
             <div className="space-y-4">
               <div>
                 <label className="block text-[#3d312e] text-sm font-medium mb-1">Introduction</label>
@@ -683,7 +683,7 @@ const getStudyHours = (day: number) => {
               </div>
             </div>
 
-            <div className="flex gap-2 mt-6">
+            <div className="flex flex-col md:flex-row gap-2 mt-6">
               <button
                 type="button"
                 onClick={() => setIsEditingAbout(false)}
@@ -757,13 +757,13 @@ const getStudyHours = (day: number) => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" key="portfolio-modal">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-[#3d312e]">Edit Profile Details</h3>
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-center p-4 border-b">
+            <h3 className="text-lg md:text-xl font-bold text-[#3d312e]">Edit Profile Details</h3>
             <button onClick={() => setIsEditingPortfolio(false)} className="text-[#3d312e] hover:text-[#2a221f]">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
+                className="h-5 w-5 md:h-6 md:w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -779,19 +779,19 @@ const getStudyHours = (day: number) => {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="p-4 md:p-6">
             <div className="flex flex-col items-center mb-4">
               <div className="relative">
                 <img
                   src={editProfileImage || "/placeholder.svg"}
                   alt="Profile"
-                  className="w-32 h-32 rounded-full border-4 border-white shadow-md object-cover"
+                  className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-md object-cover"
                 />
-                <label className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md cursor-pointer border border-[#bba2a2]">
+                <label className="absolute bottom-0 right-0 bg-white p-1 md:p-2 rounded-full shadow-md cursor-pointer border border-[#bba2a2]">
                   <input type="file" accept="image/*" onChange={handleLocalImageChange} className="hidden" />
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5 text-[#3d312e]"
+                    className="h-4 w-4 md:h-5 md:w-5 text-[#3d312e]"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -845,7 +845,7 @@ const getStudyHours = (day: number) => {
               </div>
             </div>
 
-            <div className="flex gap-2 mt-6">
+            <div className="flex flex-col md:flex-row gap-2 mt-6">
               <button
                 type="button"
                 onClick={() => setIsEditingPortfolio(false)}
@@ -880,13 +880,13 @@ const getStudyHours = (day: number) => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" key="note-modal">
-        <div className={`${colorClasses[selectedNote.color]} rounded-lg shadow-xl max-w-2xl w-full p-6`}>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-[#3d312e]">{selectedNote.subject}</h3>
+        <div className={`${colorClasses[selectedNote.color]} rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto`}>
+          <div className="flex justify-between items-center p-4 border-b">
+            <h3 className="text-lg md:text-xl font-bold text-[#3d312e]">{selectedNote.subject}</h3>
             <button onClick={() => setSelectedNote(null)} className="text-[#3d312e] hover:text-[#2a221f]">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
+                className="h-5 w-5 md:h-6 md:w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -896,27 +896,29 @@ const getStudyHours = (day: number) => {
             </button>
           </div>
 
-          <div className="mb-4">
-            <span className="text-sm text-gray-600">
-              {new Date(selectedNote.date).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                weekday: "long",
-              })}
-            </span>
-          </div>
+          <div className="p-4 md:p-6">
+            <div className="mb-4">
+              <span className="text-sm text-gray-600">
+                {new Date(selectedNote.date).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                  weekday: "long",
+                })}
+              </span>
+            </div>
 
-          <div className="bg-white p-4 rounded-md mb-6">
-            <pre className="whitespace-pre-wrap font-sans">{selectedNote.notes}</pre>
-          </div>
+            <div className="bg-white p-4 rounded-md mb-6">
+              <pre className="whitespace-pre-wrap font-sans text-sm md:text-base">{selectedNote.notes}</pre>
+            </div>
 
-          <button
-            onClick={() => setSelectedNote(null)}
-            className="w-full px-4 py-2 bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition"
-          >
-            Close
-          </button>
+            <button
+              onClick={() => setSelectedNote(null)}
+              className="w-full px-4 py-2 bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -974,40 +976,41 @@ const getStudyHours = (day: number) => {
       {/* Banner */}
       <Banner />
 
-      <div className="flex flex-col md:flex-row max-w-6xl mx-auto w-full px-4 -mt-16 mb-8 gap-8">
+      {/* CHANGED: Reduced negative margin on mobile (-mt-8) while keeping desktop margin (-mt-16) */}
+      <div className="flex flex-col md:flex-row max-w-6xl mx-auto w-full px-4 -mt-8 md:-mt-16 mb-8 gap-4 md:gap-8">
         {/* Left Profile Card */}
-        <div className="w-full md:w-1/3 lg:w-1/4">
-          <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
+        <div className="w-full md:w-1/3 lg:w-1/4 z-10">
+          <div className="bg-white rounded-lg shadow-md p-4 md:p-6 sticky top-4">
             <div className="flex flex-col items-center relative">
               <img
                 src={profileImage || "/placeholder.svg"}
                 alt="Profile"
-                className="w-40 h-40 rounded-full border-4 border-white shadow-md -mt-20 object-cover"
+                className="w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded-full border-4 border-white shadow-md -mt-16 md:-mt-20 object-cover"
               />
             </div>
 
-            <div className="mt-6 text-center">
-              <h2 className="text-2xl font-bold text-[#3d312e]">{formData.username}</h2>
-              <p className="text-[#3d312e]">Graphic Designer & Illustrator</p>
-              <p className="text-sm text-[#3d312e] mt-2 italic">"{formData.bio}"</p>
+            <div className="mt-4 md:mt-6 text-center">
+              <h2 className="text-xl md:text-2xl font-bold text-[#3d312e]">{formData.username}</h2>
+              <p className="text-sm md:text-base text-[#3d312e]">Graphic Designer & Illustrator</p>
+              <p className="text-xs md:text-sm text-[#3d312e] mt-2 italic">"{formData.bio}"</p>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-4 md:mt-6 space-y-2 md:space-y-4">
               <button
                 onClick={() => setIsEditingPassword(true)}
-                className="w-full px-4 py-2 bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition"
+                className="w-full px-4 py-2 bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition text-sm md:text-base"
               >
                 Change Password
               </button>
               <button
                 onClick={() => setIsEditingPortfolio(true)}
-                className="w-full px-4 py-2 border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition"
+                className="w-full px-4 py-2 border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition text-sm md:text-base"
               >
                 Edit Profile Details
               </button>
               <button
                 onClick={() => (window.location.href = "/purchases")}
-                className="w-full px-4 py-2 border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition"
+                className="w-full px-4 py-2 border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition text-sm md:text-base"
               >
                 Purchase Pro Plan
               </button>
@@ -1016,12 +1019,12 @@ const getStudyHours = (day: number) => {
         </div>
 
         {/* Right Content */}
-        <div className="w-full md:w-2/3 lg:w-3/4 pt-16">
+        <div className="w-full md:w-2/3 lg:w-3/4 pt-0 md:pt-16">
           <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-            <div className="flex border-b border-[#bba2a2]">
+            <div className="flex border-b border-[#bba2a2] overflow-x-auto">
               <button
                 onClick={() => setActiveTab("about")}
-                className={`px-6 py-3 font-medium capitalize ${
+                className={`px-4 py-3 font-medium capitalize whitespace-nowrap text-sm md:text-base ${
                   activeTab === "about"
                     ? "text-[#3d312e] border-b-2 border-[#3d312e]"
                     : "text-[#3d312e] hover:text-[#2a221f]"
@@ -1031,7 +1034,7 @@ const getStudyHours = (day: number) => {
               </button>
               <button
                 onClick={() => setActiveTab("studyNotes")}
-                className={`px-6 py-3 font-medium capitalize ${
+                className={`px-4 py-3 font-medium capitalize whitespace-nowrap text-sm md:text-base ${
                   activeTab === "studyNotes"
                     ? "text-[#3d312e] border-b-2 border-[#3d312e]"
                     : "text-[#3d312e] hover:text-[#2a221f]"
@@ -1041,12 +1044,12 @@ const getStudyHours = (day: number) => {
               </button>
             </div>
 
-            <div className="p-6 min-h-[300px]">
+            <div className="p-4 md:p-6 min-h-[300px]">
               {activeTab === "about" && (
-                <div className="flex flex-col md:flex-row gap-8">
+                <div className="flex flex-col md:flex-row gap-6 md:gap-8">
                   <div className="w-full md:w-1/2">
                     <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-2xl font-bold text-[#3d312e]">About Me</h3>
+                      <h3 className="text-xl md:text-2xl font-bold text-[#3d312e]">About Me</h3>
                       <button
                         onClick={() => setIsEditingAbout(true)}
                         className="px-3 py-1 text-sm bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition"
@@ -1054,13 +1057,13 @@ const getStudyHours = (day: number) => {
                         Edit
                       </button>
                     </div>
-                    <p className="text-[#3d312e] mb-4">{aboutMe.intro}</p>
-                    <p className="text-[#3d312e]">{aboutMe.description}</p>
+                    <p className="text-[#3d312e] mb-4 text-sm md:text-base">{aboutMe.intro}</p>
+                    <p className="text-[#3d312e] text-sm md:text-base">{aboutMe.description}</p>
                   </div>
 
                   <div className="w-full md:w-1/2">
-                    <h3 className="text-2xl font-bold text-[#3d312e] mb-4">Study Streak</h3>
-                    <div className="bg-white p-4 rounded-lg shadow-md">
+                    <h3 className="text-xl md:text-2xl font-bold text-[#3d312e] mb-4">Study Streak</h3>
+                    <div className="bg-white p-3 md:p-4 rounded-lg shadow-md">
                       <StudyStreakCalendar />
                     </div>
                   </div>
@@ -1069,24 +1072,24 @@ const getStudyHours = (day: number) => {
 
               {activeTab === "studyNotes" && (
                 <div>
-                  <h3 className="text-2xl font-bold text-[#3d312e] mb-6">Study Notes</h3>
+                  <h3 className="text-xl md:text-2xl font-bold text-[#3d312e] mb-4 md:mb-6">Study Notes</h3>
                   {studyNotes.length === 0 ? (
-                    <div className="text-center py-12">
+                    <div className="text-center py-8 md:py-12">
                       <p className="text-gray-500">No study notes available.</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3 md:space-y-4">
                       {studyNotes
                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                         .map((note) => (
                           <div
                             key={note.id}
-                            className="border border-[#bba2a2] rounded-lg p-4 hover:shadow-md transition"
+                            className="border border-[#bba2a2] rounded-lg p-3 md:p-4 hover:shadow-md transition"
                           >
-                            <div className="flex justify-between items-start">
+                            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2 md:gap-0">
                               <div>
-                                <h4 className="font-bold text-[#3d312e]">{note.subject}</h4>
-                                <p className="text-sm text-gray-600">
+                                <h4 className="font-bold text-[#3d312e] text-sm md:text-base">{note.subject}</h4>
+                                <p className="text-xs md:text-sm text-gray-600">
                                   {new Date(note.date).toLocaleDateString("en-US", {
                                     year: "numeric",
                                     month: "long",
@@ -1097,12 +1100,12 @@ const getStudyHours = (day: number) => {
                               </div>
                               <button
                                 onClick={() => setSelectedNote(note)}
-                                className="px-3 py-1 text-sm bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition"
+                                className="px-3 py-1 text-xs md:text-sm bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition self-start md:self-auto"
                               >
                                 View Notes
                               </button>
                             </div>
-                            <p className="mt-2 text-[#3d312e] line-clamp-2">{note.notes.split("\n")[0]}</p>
+                            <p className="mt-2 text-[#3d312e] line-clamp-2 text-sm md:text-base">{note.notes.split("\n")[0]}</p>
                           </div>
                         ))}
                     </div>

@@ -35,15 +35,23 @@ export default function Sidebar({
     <>
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        className="button fixed top-2.5 left-4 z-50 transition-opacity duration-200"
+        className="fixed top-2.5 left-4 z-50 transition-opacity duration-200 bg-white p-2 rounded-md shadow-md"
         aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
       >
         {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
+      {/* Sidebar Overlay - Only visible on mobile */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <div
-        className={`sidebar p-4 fixed h-full top-0 left-0 z-10 transform transition-transform duration-300 ${
+        className={`fixed h-full top-0 left-0 bg-gray-900 p-4 transform transition-transform duration-300 z-40 ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ width: "13rem" }}
@@ -55,6 +63,7 @@ export default function Sidebar({
           <NavItem icon={<ListIcon className="mr-4 text-white" />} href="/todo" title="To-do List" />
           <NavItem icon={<EditCalendarIcon className="mr-4 text-white" />} href="/timetable" title="Timetable" />
           <NavItem icon={<AutoStoriesIcon className="mr-4 text-white" />} href="/studysession" title="Study Session" />
+          
           {isProUser ? (
             <NavItem icon={<LockClockIcon className="mr-4 text-white" />} href="/focus" title="Focus Session" />
           ) : (
@@ -66,7 +75,7 @@ export default function Sidebar({
             </Tooltip>
           )}
 
-                    {isProUser ? (
+          {isProUser ? (
             <NavItem icon={<LockClockIcon className="mr-4 text-white" />} href="/vocab" title="Vocabulary Study" />
           ) : (
             <Tooltip title="Upgrade to Pro to unlock Vocabulary Study" arrow>
@@ -95,4 +104,3 @@ function NavItem({ icon, href, title }: { icon: React.ReactNode; href: string; t
     </li>
   );
 }
-  

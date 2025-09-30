@@ -25,6 +25,10 @@ const DEFAULT_PROFILE = {
   occupation: "Graphic Designer & Illustrator",
 }
 
+// File validation constants
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+
 export default function ProfilePage() {
   // State management
   const [activeTab, setActiveTab] = useState("about")
@@ -33,6 +37,7 @@ export default function ProfilePage() {
   const [isEditingPortfolio, setIsEditingPortfolio] = useState(false)
   const [isEditingBanner, setIsEditingBanner] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   // Main state for persisted data
   const [formData, setFormData] = useState({
@@ -54,105 +59,107 @@ export default function ProfilePage() {
   const [studyStreaks, setStudyStreaks] = useState<{ date: string; hours: number }[]>([])
   const [selectedNote, setSelectedNote] = useState<StudyNote | null>(null)
 
-
-const generateStudyStreaks = (studySessions: any[]) => {
-  const streaksMap: Record<string, number> = {};
-
-  studySessions.forEach(session => {
-    // Use the date from the session (either created_at or start_time)
-    const date = session.created_at ? session.created_at.split('T')[0] : 
-                session.start_time ? session.start_time.split('T')[0] : 
-                new Date().toISOString().split('T')[0];
-    
-    // Calculate actual duration in hours if available, otherwise count as 1 hour
-    let hours = 1; 
-    
-    if (session.start_time && session.end_time) {
-      try {
-        const start = new Date(session.start_time);
-        const end = new Date(session.end_time);
-        const durationMs = end.getTime() - start.getTime();
-        hours = durationMs / (1000 * 60 * 60); // Convert ms to hours
-        hours = Math.max(0.5, Math.round(hours * 100) / 100); // Round to 2 decimal places, minimum 0.5 hours
-      } catch (error) {
-        console.error("Error calculating duration:", error);
-        hours = 1; // Fallback to 1 hour on error
-      }
+  // File validation function
+  const validateFile = (file: File): string | null => {
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      return `Invalid file type. Allowed types: ${ALLOWED_FILE_TYPES.map(type => type.split('/')[1]).join(', ')}`
     }
-
-    streaksMap[date] = (streaksMap[date] || 0) + hours;
-  });
-
-  // Convert to array format with rounded hours
-  return Object.entries(streaksMap).map(([date, hours]) => ({ 
-    date, 
-    hours: Math.round(hours) // Round to whole hours for display
-  }));
-}
-
-
-  
-
-  // Fetch profile data
-useEffect(() => {
-  const fetchProfileData = async () => {
-    try {
-      const response = await fetch("/api/profile", {
-        credentials: "include",
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-
-      setFormData({
-        username: data.user?.username || DEFAULT_PROFILE.username,
-        bio: data.profile?.bio || DEFAULT_PROFILE.bio,
-      })
-      setProfileImage(data.profile?.profileImage || DEFAULT_PROFILE.profileImage)
-      setAboutMe({
-        intro: data.profile?.intro || DEFAULT_PROFILE.intro,
-        description: data.profile?.description || DEFAULT_PROFILE.description,
-      })
-      setBannerData({
-        image: data.profile?.bannerImage || DEFAULT_PROFILE.bannerImage,
-        text: data.profile?.bannerText || DEFAULT_PROFILE.bannerText,
-      })
-
-      // MOVE THIS CODE INSIDE THE FETCH FUNCTION, RIGHT HERE:
-      if (data.studyNotes && Array.isArray(data.studyNotes)) {
-        // Filter out study sessions with null/empty notes and transform API data
-        const formattedNotes: StudyNote[] = data.studyNotes
-          .filter((note: any) => note.notes && note.notes.trim() !== "") // Filter out empty notes
-          .map((note: any, index: number) => ({
-            id: note.id || index,
-            date: note.created_at || note.start_time || new Date().toISOString().split('T')[0],
-            subject: note.subject || "Unknown Subject",
-            notes: note.notes || "",
-            // Assign colors based on index
-            color: ["white", "blue", "yellow", "green", "pink"][index % 5] as NoteColor
-          }));
-        
-        setStudyNotes(formattedNotes);
-        
-        // Generate study streaks from the raw study sessions data (not formatted notes)
-        const streaks = generateStudyStreaks(data.studyNotes);
-        setStudyStreaks(streaks);
-      }
-    } catch (error) {
-      console.error("Fetch error:", error)
-    } finally {
-      setIsLoading(false)
+    
+    if (file.size > MAX_FILE_SIZE) {
+      return `File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB`
     }
+    
+    return null
   }
 
-  fetchProfileData()
-}, [])
+  const generateStudyStreaks = (studySessions: any[]) => {
+    const streaksMap: Record<string, number> = {};
+
+    studySessions.forEach(session => {
+      const date = session.created_at ? session.created_at.split('T')[0] : 
+                  session.start_time ? session.start_time.split('T')[0] : 
+                  new Date().toISOString().split('T')[0];
+      
+      let hours = 1; 
+      
+      if (session.start_time && session.end_time) {
+        try {
+          const start = new Date(session.start_time);
+          const end = new Date(session.end_time);
+          const durationMs = end.getTime() - start.getTime();
+          hours = durationMs / (1000 * 60 * 60);
+          hours = Math.max(0.5, Math.round(hours * 100) / 100);
+        } catch (error) {
+          console.error("Error calculating duration:", error);
+          hours = 1;
+        }
+      }
+
+      streaksMap[date] = (streaksMap[date] || 0) + hours;
+    });
+
+    return Object.entries(streaksMap).map(([date, hours]) => ({ 
+      date, 
+      hours: Math.round(hours)
+    }));
+  }
+
+  // Fetch profile data
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        const response = await fetch("/api/profile", {
+          credentials: "include",
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        setFormData({
+          username: data.user?.username || DEFAULT_PROFILE.username,
+          bio: data.profile?.bio || DEFAULT_PROFILE.bio,
+        })
+        setProfileImage(data.profile?.profileImage || DEFAULT_PROFILE.profileImage)
+        setAboutMe({
+          intro: data.profile?.intro || DEFAULT_PROFILE.intro,
+          description: data.profile?.description || DEFAULT_PROFILE.description,
+        })
+        setBannerData({
+          image: data.profile?.bannerImage || DEFAULT_PROFILE.bannerImage,
+          text: data.profile?.bannerText || DEFAULT_PROFILE.bannerText,
+        })
+
+        if (data.studyNotes && Array.isArray(data.studyNotes)) {
+          const formattedNotes: StudyNote[] = data.studyNotes
+            .filter((note: any) => note.notes && note.notes.trim() !== "")
+            .map((note: any, index: number) => ({
+              id: note.id || index,
+              date: note.created_at || note.start_time || new Date().toISOString().split('T')[0],
+              subject: note.subject || "Unknown Subject",
+              notes: note.notes || "",
+              color: ["white", "blue", "yellow", "green", "pink"][index % 5] as NoteColor
+            }));
+          
+          setStudyNotes(formattedNotes);
+          const streaks = generateStudyStreaks(data.studyNotes);
+          setStudyStreaks(streaks);
+        }
+      } catch (error) {
+        console.error("Fetch error:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProfileData()
+  }, [])
+
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
-    return { name, value } // Return for modal use
+    return { name, value }
   }, [])
 
   const handleImageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>, setImage: (value: string) => void) => {
@@ -167,113 +174,105 @@ useEffect(() => {
   }, [])
 
   // Study Streak Calendar Component
-const StudyStreakCalendar = () => {
-  const currentDate = new Date()
-  const currentMonth = currentDate.getMonth()
-  const currentYear = currentDate.getFullYear()
-  
-  // Get first day of month and total days
-  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay() // 0 = Sunday, 1 = Monday, etc.
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
-  
-  // Create array for days including empty cells for padding
-  const daysArray: (number | null)[] = []
-  
-  // Add empty cells for days before the 1st
-  for (let i = 0; i < firstDayOfMonth; i++) {
-    daysArray.push(null)
-  }
-  
-  // Add all days of the month
-  for (let i = 1; i <= daysInMonth; i++) {
-    daysArray.push(i)
-  }
+  const StudyStreakCalendar = () => {
+    const currentDate = new Date()
+    const currentMonth = currentDate.getMonth()
+    const currentYear = currentDate.getFullYear()
+    
+    const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay()
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+    
+    const daysArray: (number | null)[] = []
+    
+    for (let i = 0; i < firstDayOfMonth; i++) {
+      daysArray.push(null)
+    }
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+      daysArray.push(i)
+    }
 
-const getStudyHours = (day: number) => {
-  // Format the date to match your studyStreaks format (YYYY-MM-DD)
-  const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  
-  // Find matching study session
-  const dayData = studyStreaks.find((d) => {
-    // Ensure both dates are in the same format for comparison
-    const streakDate = new Date(d.date).toISOString().split('T')[0];
-    return streakDate === dateStr;
-  });
-  
-  return dayData ? dayData.hours : 0;
-}
-
-  const getColor = (hours: number) => {
-    if (hours === 0) return "bg-gray-100"
-    if (hours <= 1) return "bg-blue-100"
-    if (hours <= 2) return "bg-blue-200"
-    if (hours <= 3) return "bg-blue-300"
-    if (hours <= 4) return "bg-blue-400"
-    return "bg-blue-500"
-  }
-
-  return (
-    <div className="space-y-2">
-      <h4 className="font-medium text-[#3d312e] text-sm md:text-base">
-        {new Date().toLocaleString('default', { month: 'long' })} {currentYear} • {studyStreaks.filter((d) => d.hours > 0).length} study days
-      </h4>
+    const getStudyHours = (day: number) => {
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       
-      {/* Day headers */}
-      <div className="grid grid-cols-7 gap-1 mb-1 text-xs text-center text-gray-500">
-        <div className="text-[10px] md:text-xs">Sun</div>
-        <div className="text-[10px] md:text-xs">Mon</div>
-        <div className="text-[10px] md:text-xs">Tue</div>
-        <div className="text-[10px] md:text-xs">Wed</div>
-        <div className="text-[10px] md:text-xs">Thu</div>
-        <div className="text-[10px] md:text-xs">Fri</div>
-        <div className="text-[10px] md:text-xs">Sat</div>
-      </div>
+      const dayData = studyStreaks.find((d) => {
+        const streakDate = new Date(d.date).toISOString().split('T')[0];
+        return streakDate === dateStr;
+      });
       
-      <div className="grid grid-cols-7 gap-1">
-        {daysArray.map((day, index) => {
-          if (day === null) {
+      return dayData ? dayData.hours : 0;
+    }
+
+    const getColor = (hours: number) => {
+      if (hours === 0) return "bg-gray-100"
+      if (hours <= 1) return "bg-blue-100"
+      if (hours <= 2) return "bg-blue-200"
+      if (hours <= 3) return "bg-blue-300"
+      if (hours <= 4) return "bg-blue-400"
+      return "bg-blue-500"
+    }
+
+    return (
+      <div className="space-y-2">
+        <h4 className="font-medium text-[#3d312e] text-sm md:text-base">
+          {new Date().toLocaleString('default', { month: 'long' })} {currentYear} • {studyStreaks.filter((d) => d.hours > 0).length} study days
+        </h4>
+        
+        <div className="grid grid-cols-7 gap-1 mb-1 text-xs text-center text-gray-500">
+          <div className="text-[10px] md:text-xs">Sun</div>
+          <div className="text-[10px] md:text-xs">Mon</div>
+          <div className="text-[10px] md:text-xs">Tue</div>
+          <div className="text-[10px] md:text-xs">Wed</div>
+          <div className="text-[10px] md:text-xs">Thu</div>
+          <div className="text-[10px] md:text-xs">Fri</div>
+          <div className="text-[10px] md:text-xs">Sat</div>
+        </div>
+        
+        <div className="grid grid-cols-7 gap-1">
+          {daysArray.map((day, index) => {
+            if (day === null) {
+              return (
+                <div
+                  key={`empty-${index}`}
+                  className="h-6 md:h-8 rounded-sm bg-transparent"
+                />
+              )
+            }
+            
+            const hours = getStudyHours(day)
+            const isToday = day === currentDate.getDate() && currentMonth === new Date().getMonth()
+            
             return (
               <div
-                key={`empty-${index}`}
-                className="h-6 md:h-8 rounded-sm bg-transparent"
-              />
+                key={day}
+                className={`h-6 md:h-8 rounded-sm ${getColor(hours)} flex items-center justify-center text-[10px] md:text-xs ${
+                  isToday ? "ring-1 md:ring-2 ring-blue-500" : ""
+                }`}
+                title={`${day}/${currentMonth + 1}: ${hours} hour(s)`}
+              >
+                {isToday ? (
+                  <span className="font-bold">{day}</span>
+                ) : (
+                  day
+                )
+                }
+              </div>
             )
-          }
-          
-          const hours = getStudyHours(day)
-          const isToday = day === currentDate.getDate() && currentMonth === new Date().getMonth()
-          
-          return (
-            <div
-              key={day}
-              className={`h-6 md:h-8 rounded-sm ${getColor(hours)} flex items-center justify-center text-[10px] md:text-xs ${
-                isToday ? "ring-1 md:ring-2 ring-blue-500" : ""
-              }`}
-              title={`${day}/${currentMonth + 1}: ${hours} hour(s)`}
-            >
-              {isToday ? (
-                <span className="font-bold">{day}</span>
-              ) : (
-                day
-              )
-              }
-            </div>
-          )
-        })}
-      </div>
-      
-      <div className="flex justify-between text-[10px] md:text-xs text-gray-500 mt-2">
-        <span>Less</span>
-        <div className="flex space-x-1">
-          <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-100 rounded-sm"></div>
-          <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-300 rounded-sm"></div>
-          <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-500 rounded-sm"></div>
+          })}
         </div>
-        <span>More</span>
+        
+        <div className="flex justify-between text-[10px] md:text-xs text-gray-500 mt-2">
+          <span>Less</span>
+          <div className="flex space-x-1">
+            <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-100 rounded-sm"></div>
+            <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-300 rounded-sm"></div>
+            <div className="w-3 h-3 md:w-4 md:h-4 bg-blue-500 rounded-sm"></div>
+          </div>
+          <span>More</span>
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
 
   // Banner Component
   const Banner = () => {
@@ -338,6 +337,10 @@ const getStudyHours = (day: number) => {
   // Banner Edit Modal
   const BannerEditModal = () => {
     const [editBannerData, setEditBannerData] = useState(bannerData)
+    const [editBannerImage, setEditBannerImage] = useState<File | null>(null)
+    const [previewBannerImage, setPreviewBannerImage] = useState(bannerData.image)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [error, setError] = useState<string | null>(null)
     const MAX_LENGTH = 120
 
     const splitPreviewText = (text: string) => {
@@ -364,22 +367,72 @@ const getStudyHours = (day: number) => {
 
     const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const { value } = e.target
-      console.log("Banner text changed:", value) // Debug log
       setEditBannerData((prev) => ({ ...prev, text: value }))
+      setError(null)
     }, [])
 
     const handleBannerImageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      handleImageChange(e, (value) => setEditBannerData((prev) => ({ ...prev, image: value })))
-    }, [handleImageChange])
+      const file = e.target.files?.[0]
+      if (file) {
+        const validationError = validateFile(file)
+        if (validationError) {
+          setError(validationError)
+          return
+        }
+        
+        setEditBannerImage(file)
+        setError(null)
+        // Create preview
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          setPreviewBannerImage(event.target?.result as string)
+        }
+        reader.readAsDataURL(file)
+      }
+    }, [])
 
     const handleSubmit = useCallback(
       async (e: React.FormEvent) => {
         e.preventDefault()
-        console.log("Saving banner:", editBannerData) // Debug log
-        setBannerData(editBannerData)
-        await handleBannerSubmit(e)
+        setIsSubmitting(true)
+        setError(null)
+        
+        try {
+          const formData = new FormData()
+          formData.append('bannerText', editBannerData.text)
+          
+          if (editBannerImage) {
+            formData.append('bannerImage', editBannerImage)
+          }
+
+          const response = await fetch("/api/profile", {
+            method: "PUT",
+            credentials: "include",
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Failed to update banner")
+          }
+
+          const result = await response.json()
+          
+          if (result.bannerImage) {
+            setBannerData(prev => ({ ...prev, image: result.bannerImage }))
+          }
+          
+          setBannerData(prev => ({ ...prev, text: editBannerData.text }))
+          alert("Banner updated successfully!")
+          setIsEditingBanner(false)
+        } catch (error: any) {
+          console.error("Error updating banner:", error)
+          setError(error.message || "Failed to update banner")
+        } finally {
+          setIsSubmitting(false)
+        }
       },
-      [editBannerData]
+      [editBannerData, editBannerImage]
     )
 
     return (
@@ -387,7 +440,11 @@ const getStudyHours = (day: number) => {
         <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto mx-4">
           <div className="flex justify-between items-center p-4 border-b">
             <h3 className="text-lg md:text-xl font-bold text-[#3d312e]">Edit Banner</h3>
-            <button onClick={() => setIsEditingBanner(false)} className="text-[#3d312e] hover:text-[#2a221f]">
+            <button 
+              onClick={() => setIsEditingBanner(false)} 
+              className="text-[#3d312e] hover:text-[#2a221f]"
+              disabled={isSubmitting}
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5 md:h-6 md:w-6"
@@ -401,24 +458,39 @@ const getStudyHours = (day: number) => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-4 md:p-6">
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                {error}
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <label className="block text-[#3d312e] text-sm font-medium mb-1">Banner Image</label>
                 <div className="flex flex-col md:flex-row md:items-center gap-4">
                   <label className="cursor-pointer">
-                    <input type="file" accept="image/*" onChange={handleBannerImageChange} className="hidden" />
-                    <div className="px-4 py-2 border border-[#bba2a2] rounded-md text-sm bg-white hover:bg-[#f0eeee] transition text-center">
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleBannerImageChange} 
+                      className="hidden" 
+                      disabled={isSubmitting}
+                    />
+                    <div className="px-4 py-2 border border-[#bba2a2] rounded-md text-sm bg-white hover:bg-[#f0eeee] transition text-center disabled:opacity-50">
                       Change Image
                     </div>
                   </label>
-                  {editBannerData.image && (
+                  {previewBannerImage && (
                     <img
-                      src={editBannerData.image || "/placeholder.svg"}
+                      src={previewBannerImage}
                       alt="Banner preview"
                       className="h-12 w-24 object-cover rounded-md mt-2 md:mt-0"
                     />
                   )}
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Maximum file size: 5MB. Allowed types: JPEG, PNG, GIF, WebP
+                </p>
               </div>
 
               <div>
@@ -429,8 +501,9 @@ const getStudyHours = (day: number) => {
                   value={editBannerData.text}
                   onChange={handleTextChange}
                   maxLength={MAX_LENGTH}
-                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm h-32 bg-white"
+                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm h-32 bg-white disabled:opacity-50"
                   placeholder="Enter your banner text. Highlight words with *asterisks*"
+                  disabled={isSubmitting}
                 />
                 <div className="text-right text-xs text-gray-500">
                   {editBannerData.text.length}/{MAX_LENGTH} characters
@@ -456,15 +529,24 @@ const getStudyHours = (day: number) => {
               <button
                 type="button"
                 onClick={() => setIsEditingBanner(false)}
-                className="flex-1 px-4 py-2 text-sm border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition"
+                className="flex-1 px-4 py-2 text-sm border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition disabled:opacity-50"
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 text-sm bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition"
+                className="flex-1 px-4 py-2 text-sm bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition disabled:opacity-50 flex items-center justify-center"
+                disabled={isSubmitting}
               >
-                Save Changes
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
               </button>
             </div>
           </form>
@@ -480,18 +562,24 @@ const getStudyHours = (day: number) => {
       newPassword: "",
       confirmPassword: "",
     })
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     const handleLocalChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const { name, value } = handleChange(e)
-      console.log("Password field changed:", name, value) // Debug log
       setEditFormData((prev) => ({ ...prev, [name]: value }))
+      setError(null)
     }, [handleChange])
 
     const handleSubmit = useCallback(
       async (e: React.FormEvent) => {
         e.preventDefault()
+        setIsSubmitting(true)
+        setError(null)
+
         if (editFormData.newPassword !== editFormData.confirmPassword) {
-          alert("New passwords don't match!")
+          setError("New passwords don't match!")
+          setIsSubmitting(false)
           return
         }
 
@@ -518,7 +606,9 @@ const getStudyHours = (day: number) => {
           setEditFormData({ currentPassword: "", newPassword: "", confirmPassword: "" })
         } catch (error: any) {
           console.error("Error updating password:", error)
-          alert(error.message || "Failed to update password")
+          setError(error.message || "Failed to update password")
+        } finally {
+          setIsSubmitting(false)
         }
       },
       [editFormData]
@@ -529,7 +619,11 @@ const getStudyHours = (day: number) => {
         <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
           <div className="flex justify-between items-center p-4 border-b">
             <h3 className="text-lg md:text-xl font-bold text-[#3d312e]">Change Password</h3>
-            <button onClick={() => setIsEditingPassword(false)} className="text-[#3d312e] hover:text-[#2a221f]">
+            <button 
+              onClick={() => setIsEditingPassword(false)} 
+              className="text-[#3d312e] hover:text-[#2a221f]"
+              disabled={isSubmitting}
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5 md:h-6 md:w-6"
@@ -543,6 +637,12 @@ const getStudyHours = (day: number) => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-4 md:p-6">
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                {error}
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <label className="block text-[#3d312e] text-sm font-medium mb-1">Current Password</label>
@@ -551,7 +651,9 @@ const getStudyHours = (day: number) => {
                   name="currentPassword"
                   value={editFormData.currentPassword}
                   onChange={handleLocalChange}
-                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm bg-white"
+                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm bg-white disabled:opacity-50"
+                  disabled={isSubmitting}
+                  required
                 />
               </div>
               <div>
@@ -562,7 +664,9 @@ const getStudyHours = (day: number) => {
                   value={editFormData.newPassword}
                   onChange={handleLocalChange}
                   autoComplete="new-password"
-                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm bg-white"
+                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm bg-white disabled:opacity-50"
+                  disabled={isSubmitting}
+                  required
                 />
               </div>
               <div>
@@ -572,7 +676,9 @@ const getStudyHours = (day: number) => {
                   name="confirmPassword"
                   value={editFormData.confirmPassword}
                   onChange={handleLocalChange}
-                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm bg-white"
+                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm bg-white disabled:opacity-50"
+                  disabled={isSubmitting}
+                  required
                 />
               </div>
             </div>
@@ -581,15 +687,24 @@ const getStudyHours = (day: number) => {
               <button
                 type="button"
                 onClick={() => setIsEditingPassword(false)}
-                className="flex-1 px-4 py-2 text-sm border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition"
+                className="flex-1 px-4 py-2 text-sm border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition disabled:opacity-50"
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 text-sm bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition"
+                className="flex-1 px-4 py-2 text-sm bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition disabled:opacity-50 flex items-center justify-center"
+                disabled={isSubmitting}
               >
-                Change Password
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                    Changing...
+                  </>
+                ) : (
+                  "Change Password"
+                )}
               </button>
             </div>
           </form>
@@ -601,46 +716,48 @@ const getStudyHours = (day: number) => {
   // About Edit Modal
   const AboutEditModal = () => {
     const [editAboutMe, setEditAboutMe] = useState(aboutMe)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     const handleLocalChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const { name, value } = handleChange(e)
-      console.log("About field changed:", name, value) // Debug log
+      const { name, value } = e.target
       setEditAboutMe((prev) => ({ ...prev, [name]: value }))
-    }, [handleChange])
+      setError(null)
+    }, [])
 
     const handleSubmit = useCallback(
       async (e: React.FormEvent) => {
         e.preventDefault()
-        console.log("Saving about:", editAboutMe) // Debug log
-        setAboutMe(editAboutMe)
+        setIsSubmitting(true)
+        setError(null)
+        
         try {
+          const formData = new FormData()
+          formData.append('intro', editAboutMe.intro)
+          formData.append('description', editAboutMe.description)
+
           const response = await fetch("/api/profile", {
             method: "PUT",
             credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              profileImage,
-              bannerImage: bannerData.image,
-              bio: formData.bio,
-              intro: editAboutMe.intro,
-              description: editAboutMe.description,
-              bannerText: bannerData.text,
-              occupation: DEFAULT_PROFILE.occupation,
-            }),
+            body: formData,
           })
 
-          if (!response.ok) throw new Error("Failed to update profile")
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Failed to update profile")
+          }
 
+          setAboutMe(editAboutMe)
           alert("About section updated!")
           setIsEditingAbout(false)
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error updating profile:", error)
-          alert("Failed to update profile")
+          setError(error.message || "Failed to update profile")
+        } finally {
+          setIsSubmitting(false)
         }
       },
-      [editAboutMe, profileImage, bannerData, formData]
+      [editAboutMe]
     )
 
     return (
@@ -648,7 +765,11 @@ const getStudyHours = (day: number) => {
         <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
           <div className="flex justify-between items-center p-4 border-b">
             <h3 className="text-lg md:text-xl font-bold text-[#3d312e]">Edit About Me</h3>
-            <button onClick={() => setIsEditingAbout(false)} className="text-[#3d312e] hover:text-[#2a221f]">
+            <button 
+              onClick={() => setIsEditingAbout(false)} 
+              className="text-[#3d312e] hover:text-[#2a221f]"
+              disabled={isSubmitting}
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5 md:h-6 md:w-6"
@@ -662,6 +783,12 @@ const getStudyHours = (day: number) => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-4 md:p-6">
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                {error}
+              </div>
+            )}
+
             <div className="space-y-4">
               <div>
                 <label className="block text-[#3d312e] text-sm font-medium mb-1">Introduction</label>
@@ -669,7 +796,8 @@ const getStudyHours = (day: number) => {
                   name="intro"
                   value={editAboutMe.intro}
                   onChange={handleLocalChange}
-                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm h-20 bg-white"
+                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm h-20 bg-white disabled:opacity-50"
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -678,7 +806,8 @@ const getStudyHours = (day: number) => {
                   name="description"
                   value={editAboutMe.description}
                   onChange={handleLocalChange}
-                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm h-32 bg-white"
+                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm h-32 bg-white disabled:opacity-50"
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
@@ -687,15 +816,24 @@ const getStudyHours = (day: number) => {
               <button
                 type="button"
                 onClick={() => setIsEditingAbout(false)}
-                className="flex-1 px-4 py-2 text-sm border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition"
+                className="flex-1 px-4 py-2 text-sm border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition disabled:opacity-50"
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 text-sm bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition"
+                className="flex-1 px-4 py-2 text-sm bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition disabled:opacity-50 flex items-center justify-center"
+                disabled={isSubmitting}
               >
-                Save Changes
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
               </button>
             </div>
           </form>
@@ -707,52 +845,80 @@ const getStudyHours = (day: number) => {
   // Portfolio Edit Modal
   const PortfolioEditModal = () => {
     const [editFormData, setEditFormData] = useState(formData)
-    const [editProfileImage, setEditProfileImage] = useState(profileImage)
+    const [editProfileImage, setEditProfileImage] = useState<File | null>(null)
+    const [previewImage, setPreviewImage] = useState(profileImage)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     const handleLocalChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      const { name, value } = handleChange(e)
-      console.log("Portfolio field changed:", name, value) // Debug log
+      const { name, value } = e.target
       setEditFormData((prev) => ({ ...prev, [name]: value }))
-    }, [handleChange])
+      setError(null)
+    }, [])
 
     const handleLocalImageChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-      handleImageChange(e, setEditProfileImage)
-    }, [handleImageChange])
+      const file = e.target.files?.[0]
+      if (file) {
+        const validationError = validateFile(file)
+        if (validationError) {
+          setError(validationError)
+          return
+        }
+        
+        setEditProfileImage(file)
+        setError(null)
+        // Create preview
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          setPreviewImage(event.target?.result as string)
+        }
+        reader.readAsDataURL(file)
+      }
+    }, [])
 
     const handleSubmit = useCallback(
       async (e: React.FormEvent) => {
         e.preventDefault()
-        console.log("Saving portfolio:", editFormData, editProfileImage) // Debug log
-        setFormData(editFormData)
-        setProfileImage(editProfileImage)
+        setIsSubmitting(true)
+        setError(null)
+        
         try {
+          const formData = new FormData()
+          formData.append('username', editFormData.username)
+          formData.append('bio', editFormData.bio)
+          
+          if (editProfileImage) {
+            formData.append('profileImage', editProfileImage)
+          }
+
           const response = await fetch("/api/profile", {
             method: "PUT",
             credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              profileImage: editProfileImage,
-              bannerImage: bannerData.image,
-              bio: editFormData.bio,
-              intro: aboutMe.intro,
-              description: aboutMe.description,
-              bannerText: bannerData.text,
-              occupation: DEFAULT_PROFILE.occupation,
-            }),
+            body: formData,
           })
 
-          if (!response.ok) throw new Error("Failed to update profile")
+          if (!response.ok) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || "Failed to update profile")
+          }
 
+          const result = await response.json()
+          
+          if (result.profileImage) {
+            setProfileImage(result.profileImage)
+          }
+
+          setFormData(editFormData)
           alert("Profile details updated!")
           setIsEditingPortfolio(false)
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error updating profile:", error)
-          alert("Failed to update profile")
+          setError(error.message || "Failed to update profile")
+        } finally {
+          setIsSubmitting(false)
         }
       },
-      [editFormData, editProfileImage, bannerData, aboutMe]
+      [editFormData, editProfileImage]
     )
 
     return (
@@ -760,7 +926,11 @@ const getStudyHours = (day: number) => {
         <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center p-4 border-b">
             <h3 className="text-lg md:text-xl font-bold text-[#3d312e]">Edit Profile Details</h3>
-            <button onClick={() => setIsEditingPortfolio(false)} className="text-[#3d312e] hover:text-[#2a221f]">
+            <button 
+              onClick={() => setIsEditingPortfolio(false)} 
+              className="text-[#3d312e] hover:text-[#2a221f]"
+              disabled={isSubmitting}
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-5 w-5 md:h-6 md:w-6"
@@ -780,15 +950,27 @@ const getStudyHours = (day: number) => {
           </div>
 
           <form onSubmit={handleSubmit} className="p-4 md:p-6">
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+                {error}
+              </div>
+            )}
+
             <div className="flex flex-col items-center mb-4">
               <div className="relative">
                 <img
-                  src={editProfileImage || "/placeholder.svg"}
+                  src={previewImage || "/placeholder.svg"}
                   alt="Profile"
                   className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-md object-cover"
                 />
-                <label className="absolute bottom-0 right-0 bg-white p-1 md:p-2 rounded-full shadow-md cursor-pointer border border-[#bba2a2]">
-                  <input type="file" accept="image/*" onChange={handleLocalImageChange} className="hidden" />
+                <label className="absolute bottom-0 right-0 bg-white p-1 md:p-2 rounded-full shadow-md cursor-pointer border border-[#bba2a2] disabled:opacity-50">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleLocalImageChange} 
+                    className="hidden" 
+                    disabled={isSubmitting}
+                  />
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-4 w-4 md:h-5 md:w-5 text-[#3d312e]"
@@ -811,6 +993,9 @@ const getStudyHours = (day: number) => {
                   </svg>
                 </label>
               </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Maximum file size: 5MB. Allowed types: JPEG, PNG, GIF, WebP
+              </p>
             </div>
 
             <div className="space-y-4">
@@ -821,7 +1006,8 @@ const getStudyHours = (day: number) => {
                   name="username"
                   value={editFormData.username}
                   onChange={handleLocalChange}
-                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm bg-white"
+                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm bg-white disabled:opacity-50"
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -830,8 +1016,9 @@ const getStudyHours = (day: number) => {
                   name="bio"
                   value={editFormData.bio}
                   onChange={handleLocalChange}
-                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm h-20 bg-white"
+                  className="w-full px-3 py-2 border border-[#bba2a2] rounded-md text-sm h-20 bg-white disabled:opacity-50"
                   placeholder="Enter your motto, favorite quote, or lyrics..."
+                  disabled={isSubmitting}
                 />
               </div>
               <div>
@@ -849,15 +1036,24 @@ const getStudyHours = (day: number) => {
               <button
                 type="button"
                 onClick={() => setIsEditingPortfolio(false)}
-                className="flex-1 px-4 py-2 text-sm border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition"
+                className="flex-1 px-4 py-2 text-sm border border-[#bba2a2] text-[#3d312e] rounded-md hover:bg-[#f0eeee] transition disabled:opacity-50"
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2 text-sm bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition"
+                className="flex-1 px-4 py-2 text-sm bg-[#3d312e] text-[#f0eeee] rounded-md hover:bg-[#2a221f] transition disabled:opacity-50 flex items-center justify-center"
+                disabled={isSubmitting}
               >
-                Save Changes
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
               </button>
             </div>
           </form>
@@ -924,37 +1120,6 @@ const getStudyHours = (day: number) => {
     )
   }
 
-  // Handle all submits to backend
-  const handleBannerSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      const response = await fetch("/api/profile", {
-        method: "PUT",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          profileImage,
-          bannerImage: bannerData.image,
-          bio: formData.bio,
-          intro: aboutMe.intro,
-          description: aboutMe.description,
-          bannerText: bannerData.text,
-          occupation: DEFAULT_PROFILE.occupation,
-        }),
-      })
-
-      if (!response.ok) throw new Error("Failed to update profile")
-
-      setIsEditingBanner(false)
-      alert("Banner updated successfully!")
-    } catch (error) {
-      console.error("Error updating profile:", error)
-      alert("Failed to update profile")
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-[#f0eeee] items-center justify-center">
@@ -976,7 +1141,6 @@ const getStudyHours = (day: number) => {
       {/* Banner */}
       <Banner />
 
-      {/* CHANGED: Reduced negative margin on mobile (-mt-8) while keeping desktop margin (-mt-16) */}
       <div className="flex flex-col md:flex-row max-w-6xl mx-auto w-full px-4 -mt-8 md:-mt-16 mb-8 gap-4 md:gap-8">
         {/* Left Profile Card */}
         <div className="w-full md:w-1/3 lg:w-1/4 z-10">

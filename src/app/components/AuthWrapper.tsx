@@ -1,3 +1,4 @@
+// src/components/AuthWrapper.tsx
 "use client";
 
 import { ReactNode, useState } from "react";
@@ -5,13 +6,18 @@ import Sidebar, { UserRole } from "./Sidebar";
 import Navbar from "./Navbar";
 import { usePathname } from "next/navigation";
 
+// Update the props interface
+interface AuthWrapperProps {
+  children: ReactNode;
+  userRole: UserRole;
+  isAuthenticated?: boolean;
+}
+
 export default function AuthWrapper({ 
   children, 
-  userRole 
-}: { 
-  children: ReactNode; 
-  userRole: UserRole; 
-}) {
+  userRole,
+  isAuthenticated = false 
+}: AuthWrapperProps) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -24,7 +30,7 @@ export default function AuthWrapper({
     return authRoutes.some(route => pathname?.startsWith(route));
   };
 
-  // Check if it's an admin route - use correct case for your folder
+  // Check if it's an admin route
   const isAdminRoute = pathname === '/Admin' || 
                       pathname?.startsWith('/Admin/') ||
                       pathname?.includes('/Admin');
@@ -32,6 +38,8 @@ export default function AuthWrapper({
   // Debug: log what routes are detected
   console.log('Is auth route:', isAuthRoute());
   console.log('Is admin route:', isAdminRoute);
+  console.log('Is authenticated:', isAuthenticated);
+  console.log('User role:', userRole);
 
   return (
     <>
@@ -46,20 +54,23 @@ export default function AuthWrapper({
           {children}
         </div>
       ) : (
-        // Regular pages - with sidebar and navbar
+        // Regular pages - conditionally show sidebar based on authentication
         <div className="flex min-h-screen w-full">
-          {/* Sidebar gets role */}
-          <Sidebar 
-            isSidebarOpen={isSidebarOpen} 
-            setIsSidebarOpen={setIsSidebarOpen}
-            userRole={userRole}
-          />
+          {/* Sidebar - Only show for authenticated users */}
+          {isAuthenticated && (
+            <Sidebar 
+              isSidebarOpen={isSidebarOpen} 
+              setIsSidebarOpen={setIsSidebarOpen}
+              userRole={userRole}
+            />
+          )}
           
-          <div className="flex flex-1 flex-col">
-            {/* Navbar also gets role */}
+          <div className={`flex flex-1 flex-col ${isAuthenticated ? '' : 'w-full'}`}>
+            {/* Navbar - Always show but pass authentication status */}
             <Navbar 
               setIsSidebarOpen={setIsSidebarOpen}
               userRole={userRole}
+              isAuthenticated={isAuthenticated}
             />
             
             <main className="flex flex-1 flex-col overflow-hidden">

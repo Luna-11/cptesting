@@ -76,9 +76,17 @@ export default function DashboardPage() {
   const [hasSessionData, setHasSessionData] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
-  // Check screen size on mount and resize
+  // Set isClient to true when component mounts on client
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Check screen size - moved entirely inside useEffect
+  useEffect(() => {
+    if (!isClient) return;
+
     const checkScreenSize = () => {
       const width = window.innerWidth;
       setIsMobile(width < 768);
@@ -93,7 +101,7 @@ export default function DashboardPage() {
 
     // Clean up
     return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
+  }, [isClient]);
 
   // Function to process session data for the chart
   const processSessionDataForChart = (sessions: any[]): ChartData[] => {
@@ -139,6 +147,8 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    if (!isClient) return; // Don't run on server
+
     // Fetch user data from the API
     const fetchUserData = async () => {
       try {
@@ -157,7 +167,7 @@ export default function DashboardPage() {
       }
     };
 
-    // Helper to get userId from cookies
+    // Helper to get userId from cookies - now inside useEffect
     const getUserIdFromCookies = () => {
       const cookieValue = document.cookie
         .split('; ')
@@ -166,9 +176,6 @@ export default function DashboardPage() {
 
       return cookieValue ? parseInt(cookieValue) : null;
     };
-
-    const userIdFromCookie = getUserIdFromCookies();
-    if (userIdFromCookie) setUserId(userIdFromCookie);
 
     // Fetch session data and process it for the chart
     const fetchSessionData = async () => {
@@ -221,6 +228,9 @@ export default function DashboardPage() {
     const recordLoginAndGetStreak = async () => {
       try {
         setIsLoading(true);
+
+        const userIdFromCookie = getUserIdFromCookies();
+        if (userIdFromCookie) setUserId(userIdFromCookie);
 
         // Fetch user data first
         await fetchUserData();
@@ -285,7 +295,7 @@ export default function DashboardPage() {
     };
 
     recordLoginAndGetStreak();
-  }, []);
+  }, [isClient]);
 
   const generateCalendarDays = (): CalendarDay[] => {
     const year = currentDate.getFullYear();
@@ -352,6 +362,28 @@ export default function DashboardPage() {
 
   const calendarDays = generateCalendarDays();
 
+  // Helper function to get responsive values
+  const getResponsiveValue = (mobileValue: any, desktopValue: any) => {
+    return isClient && isMobile ? mobileValue : desktopValue;
+  };
+
+  // Format month for display
+  const getMonthDisplay = () => {
+    if (!isClient) {
+      return currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    }
+    return isMobile 
+      ? currentDate.toLocaleString('default', { month: 'short', year: '2-digit' })
+      : currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+  };
+
+  // Format day names for calendar headers
+  const getDayNames = () => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    if (!isClient) return days.map(d => d.slice(0, 2));
+    return days.map(d => isMobile ? d.charAt(0) : d.slice(0, 2));
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-[#f0eeee] p-2 md:p-4">
       {/* Info Banner with Subscription Alert */}
@@ -377,8 +409,8 @@ export default function DashboardPage() {
           <Image
             src="/cat1.png"
             alt="Cat"
-            width={isMobile ? 96 : 144}
-            height={isMobile ? 96 : 144}
+            width={getResponsiveValue(96, 144)}
+            height={getResponsiveValue(96, 144)}
             className="rounded-xl object-contain"
           />
         </div>
@@ -426,8 +458,15 @@ export default function DashboardPage() {
                   margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#ddd" />
-                  <XAxis dataKey="month" stroke="#3d312e" fontSize={isMobile ? 10 : 12} />
-                  <YAxis stroke="#3d312e" fontSize={isMobile ? 10 : 12} />
+                  <XAxis 
+                    dataKey="month" 
+                    stroke="#3d312e" 
+                    fontSize={getResponsiveValue(10, 12)} 
+                  />
+                  <YAxis 
+                    stroke="#3d312e" 
+                    fontSize={getResponsiveValue(10, 12)} 
+                  />
                   <Tooltip 
                     formatter={(value: number) => [`${value} min`, 'Duration']}
                     labelFormatter={(label) => `Month: ${label}`}
@@ -463,22 +502,21 @@ export default function DashboardPage() {
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-sm md:text-md font-semibold">Calendar</h3>
               <span className="text-xs bg-[#3d312e] text-[#f0eeee] px-2 py-1 rounded-full">
-                {isMobile 
-                  ? currentDate.toLocaleString('default', { month: 'short', year: '2-digit' })
-                  : currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })
-                }
+                {getMonthDisplay()}
               </span>
             </div>
             <div className="grid grid-cols-7 gap-1 text-center text-xs">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                <div key={d} className="font-semibold text-[#3d312e] py-1">
-                  {isMobile ? d.charAt(0) : d.slice(0, 2)}
+              {getDayNames().map((d, index) => (
+                <div key={index} className="font-semibold text-[#3d312e] py-1">
+                  {d}
                 </div>
               ))}
               {calendarDays.map((day, index) => (
                 <div
                   key={index}
-                  className={`p-1 rounded relative flex items-center justify-center ${isMobile ? 'h-5 text-xs' : 'h-6' } ${
+                  className={`p-1 rounded relative flex items-center justify-center ${
+                    getResponsiveValue('h-5 text-xs', 'h-6')
+                  } ${
                     day.isToday 
                       ? "bg-[#3d312e] text-[#f0eeee]" 
                       : day.isCurrentMonth 
@@ -501,8 +539,8 @@ export default function DashboardPage() {
               <Image
                 src="/cat6.png"
                 alt="Are you ready to study?"
-                width={isMobile ? 48 : 56}
-                height={isMobile ? 48 : 56}
+                width={getResponsiveValue(48, 56)}
+                height={getResponsiveValue(48, 56)}
                 className="rounded-lg object-cover"
               />
             </div>

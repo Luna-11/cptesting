@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useRef, MouseEvent } from 'react';
+import { useState, useEffect, useRef, MouseEvent, useCallback } from 'react';
+
 import { Bell, LogOut, Users, Activity, CreditCard, TrendingUp, Calendar, Clock, Star, AlertCircle, CheckCircle, XCircle, Search, Filter, Download, Eye, Edit, Trash2, ArrowDown, BarChart3, PieChart, LineChart as LineChartIcon, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -684,155 +685,275 @@ export default function AdminDashboard() {
     );
   };
 
-  const SubscriptionsTab = () => {
-    const [payments, setPayments] = useState<Payment[]>([]);
-    const [loadingPayments, setLoadingPayments] = useState(true);
-    const [filterPaymentStatus, setFilterPaymentStatus] = useState<'all' | 'Pending' | 'Approved' | 'Rejected'>('all');
-    const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-    const [rejectionReason, setRejectionReason] = useState('');
-    const [showDetailModal, setShowDetailModal] = useState(false);
+const SubscriptionsTab = () => {
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(true);
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState<'all' | 'Pending' | 'Approved' | 'Rejected'>('all');
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
 
-    const calculateDueDate = (payment: Payment) => {
-      const baseDate = payment.approved_at ? new Date(payment.approved_at) : new Date(payment.payment_date);
-      baseDate.setMonth(baseDate.getMonth() + payment.months);
-      return baseDate.toLocaleDateString();
+  // Calculate subscription period for a single payment
+  const calculateSubscriptionPeriod = (payment: Payment) => {
+    if (payment.status !== 'Approved' || !payment.approved_at) {
+      return null;
+    }
+
+    const startDate = new Date(payment.approved_at);
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + payment.months);
+    
+    return {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0],
+      isActive: new Date() <= endDate
     };
+  };
 
-    const fetchPayments = async (status = filterPaymentStatus) => {
-      setLoadingPayments(true);
-      try {
-        const params = new URLSearchParams({
-          status: status === 'all' ? '' : status
-        });
 
-        const response = await fetchWithAuth<PaymentResponse>(
-          `/api/admin/subscriptions?${params}`
-        );
+// Calculate total subscription for a user (accumulating all approved payments)
+const calculateUserSubscription = (userId: number) => {
+  const userPayments = payments.filter(p => p.user_id === userId && p.status === 'Approved' && p.approved_at);
+  
+  if (userPayments.length === 0) return null;
 
-        if (response.data) {
-          setPayments(response.data.payments || []);
-        }
-      } catch (err) {
-        console.error('Payments fetch error:', err);
-        setError('Failed to fetch subscription payments');
-      } finally {
-        setLoadingPayments(false);
+  // Sort payments by approval date (oldest first)
+  const sortedPayments = userPayments.sort((a, b) => {
+    const dateA = new Date(a.approved_at!).getTime();
+    const dateB = new Date(b.approved_at!).getTime();
+    return dateA - dateB;
+  });
+
+  // Start with the first payment
+  const firstPayment = sortedPayments[0];
+  let currentEndDate = new Date(firstPayment.approved_at!);
+  currentEndDate.setMonth(currentEndDate.getMonth() + firstPayment.months);
+  
+  let totalMonthsPurchased = firstPayment.months;
+
+  // Process subsequent payments
+  for (let i = 1; i < sortedPayments.length; i++) {
+    const payment = sortedPayments[i];
+    const paymentDate = new Date(payment.approved_at!);
+    
+    // If this payment was made BEFORE the current subscription ends, extend it
+    if (paymentDate <= currentEndDate) {
+      currentEndDate.setMonth(currentEndDate.getMonth() + payment.months);
+    } else {
+      // If payment was made AFTER current subscription ended, start new period
+      currentEndDate = new Date(paymentDate);
+      currentEndDate.setMonth(currentEndDate.getMonth() + payment.months);
+    }
+    
+    totalMonthsPurchased += payment.months;
+  }
+
+  const now = new Date();
+  const timeDiff = currentEndDate.getTime() - now.getTime();
+  const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+  const monthsLeft = daysLeft / 30.44;
+
+  const earliestStart = sortedPayments[0].approved_at!;
+
+  return {
+    startDate: earliestStart.split('T')[0],
+    endDate: currentEndDate.toISOString().split('T')[0],
+    monthsLeft: Math.max(0, Math.floor(monthsLeft * 10) / 10), // 1 decimal place
+    isActive: now <= currentEndDate,
+    totalMonthsPurchased: totalMonthsPurchased
+  };
+};
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  // Format date range for display
+  const formatDateRange = (startDate: string, endDate: string) => {
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+  };
+
+  const fetchPayments = async (status = filterPaymentStatus) => {
+    setLoadingPayments(true);
+    try {
+      const params = new URLSearchParams({
+        status: status === 'all' ? '' : status
+      });
+
+      const response = await fetchWithAuth<PaymentResponse>(
+        `/api/admin/subscriptions?${params}`
+      );
+
+      if (response.data) {
+        setPayments(response.data.payments || []);
       }
-    };
+    } catch (err) {
+      console.error('Payments fetch error:', err);
+      setError('Failed to fetch subscription payments');
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
 
-    const handlePaymentAction = async (paymentId: number, action: 'approve' | 'reject') => {
-      try {
-        const response = await fetchWithAuth('/api/admin/subscriptions', {
-          method: 'POST',
-          body: JSON.stringify({
-            paymentId,
-            action,
-            ...(action === 'reject' && { rejectionReason })
-          })
-        });
+  const handlePaymentAction = async (paymentId: number, action: 'approve' | 'reject') => {
+    setActionLoading(paymentId);
+    try {
+      const response = await fetchWithAuth('/api/admin/subscriptions', {
+        method: 'POST',
+        body: JSON.stringify({
+          paymentId,
+          action,
+          ...(action === 'reject' && { rejectionReason })
+        })
+      });
 
-        if (response.status === 'success') {
-          fetchPayments(filterPaymentStatus);
-          setSelectedPayment(null);
-          setRejectionReason('');
-          setShowDetailModal(false);
-          setError(null);
-        } else {
-          setError(response.error || `Failed to ${action} payment`);
-        }
-      } catch (err) {
-        console.error(`Failed to ${action} payment:`, err);
-        setError(err instanceof Error ? err.message : `Failed to ${action} payment`);
+      if (response.status === 'success') {
+        await fetchPayments(filterPaymentStatus);
+        setSelectedPayment(null);
+        setRejectionReason('');
+        setShowDetailModal(false);
+        setShowRejectModal(false);
+        setError(null);
+        
+        setError(`Payment successfully ${action === 'approve' ? 'approved' : 'rejected'}!`);
+        setTimeout(() => setError(null), 3000);
+      } else {
+        setError(response.error || `Failed to ${action} payment`);
       }
-    };
+    } catch (err) {
+      console.error(`Failed to ${action} payment:`, err);
+      setError(err instanceof Error ? err.message : `Failed to ${action} payment`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
-    const openPaymentDetail = (payment: Payment) => {
-      setSelectedPayment(payment);
-      setShowDetailModal(true);
-    };
+  const openPaymentDetail = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setShowDetailModal(true);
+  };
 
-    useEffect(() => {
-      fetchPayments();
-    }, [filterPaymentStatus]);
+  const openRejectModal = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setRejectionReason('');
+    setShowRejectModal(true);
+  };
 
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-[#3d312e]">Payment Approvals</h3>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-gray-500" />
-                <select
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#bba2a2] bg-white"
-                  value={filterPaymentStatus}
-                  onChange={(e) => setFilterPaymentStatus(e.target.value as any)}
-                >
-                  <option value="all">All Status</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Rejected">Rejected</option>
-                </select>
-              </div>
-              <button 
-                onClick={() => fetchPayments()}
-                className="p-2 rounded-lg hover:bg-[#f0eeee] transition-colors"
-                title="Refresh"
-              >
-                <RefreshCw className="h-5 w-5 text-[#3d312e]" />
-              </button>
-            </div>
+  useEffect(() => {
+    fetchPayments();
+  }, [filterPaymentStatus]);
+
+  return (
+    <div className="space-y-6">
+      {/* Error/Success Message */}
+      {error && (
+        <div className={`p-4 rounded-lg ${
+          error.includes('successfully') 
+            ? 'bg-green-50 border border-green-200 text-green-800' 
+            : 'bg-red-50 border border-red-200 text-red-800'
+        }`}>
+          <div className="flex items-center">
+            {error.includes('successfully') ? (
+              <CheckCircle className="h-5 w-5 mr-2" />
+            ) : (
+              <XCircle className="h-5 w-5 mr-2" />
+            )}
+            <span className="text-sm">{error}</span>
           </div>
+        </div>
+      )}
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-[#f0eeee]">
+      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-[#3d312e]">Payment Approvals</h3>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-gray-500" />
+              <select
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#bba2a2] bg-white"
+                value={filterPaymentStatus}
+                onChange={(e) => setFilterPaymentStatus(e.target.value as any)}
+              >
+                <option value="all">All Status</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+            <button 
+              onClick={() => fetchPayments()}
+              disabled={loadingPayments}
+              className="p-2 rounded-lg hover:bg-[#f0eeee] transition-colors disabled:opacity-50"
+              title="Refresh"
+            >
+              <RefreshCw className={`h-5 w-5 text-[#3d312e] ${loadingPayments ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-[#f0eeee]">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">User</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Payment Details</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Payment Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Approved Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Due Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Remaining Time</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Details</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {loadingPayments ? (
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">User</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Payment Details</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Purchased Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Approved Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Due Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Actions</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[#3d312e] uppercase tracking-wider">Details</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loadingPayments ? (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                    <div className="flex justify-center items-center">
+                      <RefreshCw className="h-6 w-6 animate-spin mr-2" />
                       Loading payments...
-                    </td>
-                  </tr>
-                ) : payments.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
-                      No payments found
-                    </td>
-                  </tr>
-                ) : (
-                  payments.map((payment) => (
-                    <tr key={payment.payment_id}>
+                    </div>
+                  </td>
+                </tr>
+              ) : payments.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                    No payments found
+                  </td>
+                </tr>
+              ) : (
+                payments.map((payment) => {
+                  const userSubscription = calculateUserSubscription(payment.user_id);
+                  const singlePaymentSubscription = calculateSubscriptionPeriod(payment);
+                  
+                  return (
+                    <tr key={payment.payment_id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                            <span className="text-gray-600">{payment.user_name?.charAt(0)}</span>
+                            <span className="text-gray-600 font-medium">
+                              {payment.user_name?.charAt(0).toUpperCase()}
+                            </span>
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">{payment.user_name}</div>
                             <div className="text-sm text-gray-500">{payment.user_email}</div>
+                            <div className="text-xs text-gray-400">ID: {payment.user_id}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">${payment.amount}</div>
+                        <div className="text-sm font-medium text-gray-900">${payment.amount}</div>
                         <div className="text-sm text-gray-500">
                           {payment.months} month{payment.months > 1 ? 's' : ''} • {payment.method_name}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
                           ${payment.status === 'Approved' ? 'bg-green-100 text-green-800' : 
                             payment.status === 'Rejected' ? 'bg-red-100 text-red-800' : 
                             'bg-yellow-100 text-yellow-800'}`}>
@@ -840,14 +961,30 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(payment.payment_date).toLocaleDateString()}
+                        {formatDate(payment.payment_date)}
                       </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {payment.approved_at ? new Date(payment.approved_at).toLocaleDateString() : '-'}
-                      </td>
-
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {calculateDueDate(payment)}
+                        {payment.approved_at ? formatDate(payment.approved_at) : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {singlePaymentSubscription ? formatDate(singlePaymentSubscription.endDate) : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {userSubscription ? (
+                          <div className="space-y-1">
+                            <div className={`font-medium ${userSubscription.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                              {userSubscription.monthsLeft} month{userSubscription.monthsLeft !== 1 ? 's' : ''} left
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {formatDateRange(userSubscription.startDate, userSubscription.endDate)}
+                            </div>
+                            <div className="text-xs text-blue-600">
+                              Total: {userSubscription.totalMonthsPurchased} month{userSubscription.totalMonthsPurchased !== 1 ? 's' : ''} purchased
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">No active subscription</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
@@ -855,22 +992,28 @@ export default function AdminDashboard() {
                             <>
                               <button
                                 onClick={() => handlePaymentAction(payment.payment_id, 'approve')}
-                                className="p-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                                disabled={actionLoading === payment.payment_id}
+                                className="p-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Approve"
                               >
-                                <CheckCircle className="h-4 w-4" />
+                                {actionLoading === payment.payment_id ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <CheckCircle className="h-4 w-4" />
+                                )}
                               </button>
                               <button
-                                onClick={() => {
-                                  setSelectedPayment(payment);
-                                  setRejectionReason('');
-                                }}
-                                className="p-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                                onClick={() => openRejectModal(payment)}
+                                disabled={actionLoading === payment.payment_id}
+                                className="p-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Reject"
                               >
                                 <XCircle className="h-4 w-4" />
                               </button>
                             </>
+                          )}
+                          {payment.status !== 'Pending' && (
+                            <span className="text-xs text-gray-500">No actions</span>
                           )}
                         </div>
                       </td>
@@ -884,167 +1027,256 @@ export default function AdminDashboard() {
                         </button>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
+      </div>
 
-        {showDetailModal && selectedPayment && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-6">
-                  <h3 className="text-xl font-medium text-gray-900">Payment Details</h3>
-                  <button 
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      setSelectedPayment(null);
-                    }}
-                    className="text-gray-400 hover:text-gray-500"
-                  >
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
+      {/* Payment Detail Modal */}
+      {showDetailModal && selectedPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-6">
+                <h3 className="text-xl font-medium text-gray-900">Payment Details</h3>
+                <button 
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    setSelectedPayment(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-500 transition-colors"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">User Information</h4>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="flex items-center mb-3">
-                          <div className="flex-shrink-0 h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                            <span className="text-blue-600 font-medium">{selectedPayment.user_name?.charAt(0)}</span>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-lg font-medium text-gray-900">{selectedPayment.user_name}</div>
-                            <div className="text-sm text-gray-500">{selectedPayment.user_email}</div>
-                          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">User Information</h4>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex items-center mb-3">
+                        <div className="flex-shrink-0 h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                          <span className="text-blue-600 font-medium">
+                            {selectedPayment.user_name?.charAt(0).toUpperCase()}
+                          </span>
                         </div>
-                        <div className="text-sm text-gray-600">
-                          User ID: {selectedPayment.user_id}
+                        <div className="ml-4">
+                          <div className="text-lg font-medium text-gray-900">{selectedPayment.user_name}</div>
+                          <div className="text-sm text-gray-500">{selectedPayment.user_email}</div>
                         </div>
                       </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Payment Information</h4>
-                      <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Amount:</span>
-                          <span className="font-medium">${selectedPayment.amount}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Duration:</span>
-                          <span className="font-medium">
-                            {selectedPayment.months} month{selectedPayment.months > 1 ? 's' : ''}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Payment Method:</span>
-                          <span className="font-medium">{selectedPayment.method_name}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Status:</span>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full 
-                            ${selectedPayment.status === 'Approved' ? 'bg-green-100 text-green-800' : 
-                              selectedPayment.status === 'Rejected' ? 'bg-red-100 text-red-800' : 
-                              'bg-yellow-100 text-yellow-800'}`}>
-                            {selectedPayment.status}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Payment Date:</span>
-                          <span className="font-medium">
-                            {new Date(selectedPayment.payment_date).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Payment ID:</span>
-                          <span className="font-medium">{selectedPayment.payment_id}</span>
-                        </div>
+                      <div className="text-sm text-gray-600">
+                        User ID: {selectedPayment.user_id}
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Receipt Image</h4>
-                    {selectedPayment.receipt_image ? (
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <img
-                          src={selectedPayment.receipt_image}
-                          alt="Payment receipt"
-                          className="w-full h-auto max-h-80 object-contain rounded-lg border border-gray-200"
-                        />
-                        <div className="mt-3 text-center">
-                          <a
-                            href={selectedPayment.receipt_image}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 text-sm"
-                          >
-                            View full image
-                          </a>
-                        </div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Payment Information</h4>
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Amount:</span>
+                        <span className="font-medium">${selectedPayment.amount}</span>
                       </div>
-                    ) : (
-                      <div className="bg-gray-50 p-8 rounded-lg flex flex-col items-center justify-center text-gray-500">
-                        <CreditCard className="h-12 w-12 mb-3" />
-                        <p>No receipt image available</p>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Duration:</span>
+                        <span className="font-medium">
+                          {selectedPayment.months} month{selectedPayment.months > 1 ? 's' : ''}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                {selectedPayment.status === 'Pending' && (
-                  <div className="border-t pt-6">
-                    <h4 className="text-sm font-medium text-gray-700 mb-4">Admin Actions</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Rejection Reason (optional)
-                        </label>
-                        <textarea
-                          value={rejectionReason}
-                          onChange={(e) => setRejectionReason(e.target.value)}
-                          placeholder="Reason for rejection..."
-                          className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-[#bba2a2] focus:border-[#bba2a2]"
-                          rows={3}
-                        />
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Payment Method:</span>
+                        <span className="font-medium">{selectedPayment.method_name}</span>
                       </div>
-                      <div className="flex flex-col justify-end space-y-3">
-                        <button
-                          onClick={() => handlePaymentAction(selectedPayment.payment_id, 'approve')}
-                          className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center transition-colors"
-                        >
-                          <CheckCircle className="h-5 w-5 mr-2" />
-                          Approve Payment
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (rejectionReason.trim() || window.confirm('Are you sure you want to reject without providing a reason?')) {
-                              handlePaymentAction(selectedPayment.payment_id, 'reject');
-                            }
-                          }}
-                          className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center transition-colors"
-                        >
-                          <XCircle className="h-5 w-5 mr-2" />
-                          Reject Payment
-                        </button>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Status:</span>
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full 
+                          ${selectedPayment.status === 'Approved' ? 'bg-green-100 text-green-800' : 
+                            selectedPayment.status === 'Rejected' ? 'bg-red-100 text-red-800' : 
+                            'bg-yellow-100 text-yellow-800'}`}>
+                          {selectedPayment.status}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Payment Date:</span>
+                        <span className="font-medium">
+                          {formatDate(selectedPayment.payment_date)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Approved Date:</span>
+                        <span className="font-medium">
+                          {selectedPayment.approved_at ? formatDate(selectedPayment.approved_at) : '-'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Payment ID:</span>
+                        <span className="font-medium">{selectedPayment.payment_id}</span>
                       </div>
                     </div>
                   </div>
-                )}
+
+                  {/* Subscription Summary */}
+                  {selectedPayment.status === 'Approved' && selectedPayment.approved_at && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Subscription Period</h4>
+                      <div className="bg-blue-50 p-4 rounded-lg space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Starts:</span>
+                          <span className="font-medium text-blue-600">
+                            {formatDate(selectedPayment.approved_at)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Ends:</span>
+                          <span className="font-medium text-blue-600">
+                            {calculateSubscriptionPeriod(selectedPayment)?.endDate ? 
+                              formatDate(calculateSubscriptionPeriod(selectedPayment)!.endDate) : '-'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Duration:</span>
+                          <span className="font-medium text-blue-600">
+                            {selectedPayment.months} month{selectedPayment.months > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Receipt Image</h4>
+                  {selectedPayment.receipt_image ? (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <img
+                        src={selectedPayment.receipt_image}
+                        alt="Payment receipt"
+                        className="w-full h-auto max-h-80 object-contain rounded-lg border border-gray-200"
+                        onError={(e) => {
+                          e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmM2YzIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
+                        }}
+                      />
+                      <div className="mt-3 text-center">
+                        <a
+                          href={selectedPayment.receipt_image}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          View full image in new tab
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 p-8 rounded-lg flex flex-col items-center justify-center text-gray-500">
+                      <CreditCard className="h-12 w-12 mb-3 text-gray-400" />
+                      <p className="text-sm">No receipt image available</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {selectedPayment.status === 'Pending' && (
+                <div className="border-t pt-6">
+                  <h4 className="text-sm font-medium text-gray-700 mb-4">Admin Actions</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Rejection Reason (optional)
+                      </label>
+                      <textarea
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        placeholder="Reason for rejection..."
+                        className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-[#bba2a2] focus:border-[#bba2a2] resize-none"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex flex-col justify-end space-y-3">
+                      <button
+                        onClick={() => handlePaymentAction(selectedPayment.payment_id, 'approve')}
+                        disabled={actionLoading === selectedPayment.payment_id}
+                        className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {actionLoading === selectedPayment.payment_id ? (
+                          <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle className="h-5 w-5 mr-2" />
+                        )}
+                        Approve Payment
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (rejectionReason.trim() || window.confirm('Are you sure you want to reject without providing a reason?')) {
+                            handlePaymentAction(selectedPayment.payment_id, 'reject');
+                          }
+                        }}
+                        disabled={actionLoading === selectedPayment.payment_id}
+                        className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <XCircle className="h-5 w-5 mr-2" />
+                        Reject Payment
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Confirmation Modal */}
+      {showRejectModal && selectedPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Reject Payment</h3>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Rejection Reason (optional)
+                </label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Reason for rejection..."
+                  className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-[#bba2a2] focus:border-[#bba2a2] resize-none"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowRejectModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    handlePaymentAction(selectedPayment.payment_id, 'reject');
+                  }}
+                  disabled={actionLoading === selectedPayment.payment_id}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {actionLoading === selectedPayment.payment_id ? 'Rejecting...' : 'Reject Payment'}
+                </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
-    );
-  };
+        </div>
+      )}
+    </div>
+  );
+};
 
   const EngagementTab = ({ dashboardStats }: { dashboardStats: DashboardStats | null }) => (
     <div className="space-y-6">

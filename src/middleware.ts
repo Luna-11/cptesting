@@ -6,11 +6,12 @@ export function middleware(request: NextRequest) {
   const userRole = request.cookies.get('role')?.value; // 'admin' | 'pro' | 'user'
   const pathname = request.nextUrl.pathname;
 
-  // Allow API routes, login and register without authentication
+  // Allow API routes, login, register, and aboutUs without authentication
   if (
     pathname.startsWith('/api') ||
     pathname === '/login' ||
-    pathname === '/register'
+    pathname === '/register' ||
+    pathname === '/aboutUs'  // Add this line
   ) {
     return NextResponse.next();
   }
@@ -25,8 +26,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // If user is logged in and tries to access login/register, redirect based on role
-  if ((pathname === '/login' || pathname === '/register') && loggedIn) {
+  // If user is logged in and tries to access login/register/aboutUs, redirect based on role
+  if ((pathname === '/login' || pathname === '/register' || pathname === '/aboutUs') && loggedIn) {
     if (userRole === 'admin') {
       return NextResponse.redirect(new URL('/Admin', request.url));
     } else if (userRole === 'pro') {

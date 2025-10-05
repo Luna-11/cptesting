@@ -224,67 +224,68 @@ export default function TaskBoard() {
 
   if (loading) {
     return (
-      <div
-        className={`p-6 font-sans flex justify-center items-center h-screen`}
-      >
+      <div className="p-6 font-sans flex justify-center items-center h-screen">
         <p>Loading tasks...</p>
       </div>
     );
   }
 
   return (
-    <div className={`p-4 md:p-6 font-sans max-w-6xl mx-auto`}>
+    <div className="p-4 md:p-6 font-sans w-full max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-2 gap-2">
-          <h1 className="text-2xl font-bold">My Day</h1>
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3 md:gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">My Day</h1>
+            <p className="text-gray-600 text-sm md:text-base mt-1 md:mt-2">{formattedDate}</p>
+          </div>
           <div className="flex gap-2 md:gap-4">
             <button
               onClick={toggleSort}
-              className="text-gray-500 flex items-center gap-1 text-sm md:text-base px-2 py-1 md:px-0 md:py-0"
+              className="flex items-center gap-1 md:gap-2 px-3 py-2 md:px-4 md:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm md:text-base"
             >
               <ArrowsUpDownIcon className="w-4 h-4 md:w-5 md:h-5" />
-              <span className="hidden sm:inline">Sort: </span>
-              <span>{sortByNewest ? "Newest" : "Oldest"}</span>
+              <span>Sort: {sortByNewest ? "Newest" : "Oldest"}</span>
             </button>
             <button
               onClick={toggleImportantFilter}
-              className={`flex items-center gap-1 text-sm md:text-base px-2 py-1 md:px-0 md:py-0 ${
-                showImportantOnly ? "text-yellow-400" : "text-gray-500"
+              className={`flex items-center gap-1 md:gap-2 px-3 py-2 md:px-4 md:py-2 border rounded-lg transition-colors text-sm md:text-base ${
+                showImportantOnly
+                  ? "bg-yellow-50 border-yellow-300 text-yellow-700"
+                  : "border-gray-300 hover:bg-gray-50"
               }`}
             >
               {showImportantOnly ? (
-                <StarIconSolid className="w-4 h-4 md:w-5 md:h-5 text-yellow-400" />
+                <StarIconSolid className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />
               ) : (
                 <StarIconOutline className="w-4 h-4 md:w-5 md:h-5" />
               )}
-              <span className="hidden sm:inline">Important</span>
+              <span>Important</span>
             </button>
           </div>
         </div>
-        <p className="text-gray-500 text-sm md:text-base">{formattedDate}</p>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded text-sm md:text-base">
+        <div className="mb-4 md:mb-6 p-3 md:p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm md:text-base">
           {error}
         </div>
       )}
 
       {/* Input */}
-      <div className="flex flex-col sm:flex-row justify-end mb-4 gap-2">
+      <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mb-6 md:mb-8">
         <input
           type="text"
           value={taskInput}
           onChange={(e) => setTaskInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
-          placeholder="Enter a task"
-          className="border border-gray-300 rounded px-4 py-2 w-full sm:w-64 md:w-80 mr-0 sm:mr-2"
+          placeholder="Enter a new task..."
+          className="flex-1 border border-gray-300 rounded-lg px-4 py-3 md:px-6 md:py-3 text-base md:text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         <button
           onClick={handleAddTask}
-          className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors disabled:opacity-50 whitespace-nowrap"
+          className="bg-blue-600 text-white px-4 py-3 md:px-8 md:py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base md:text-lg font-medium whitespace-nowrap"
           disabled={!taskInput.trim()}
         >
           Add Task
@@ -293,25 +294,25 @@ export default function TaskBoard() {
 
       {/* Tasks */}
       {processedTasks.length === 0 ? (
-        <div className="text-center py-10 text-gray-500 text-sm md:text-base">
+        <div className="text-center py-8 md:py-16 text-gray-500 text-base md:text-xl">
           {showImportantOnly
             ? "No important tasks found"
             : "No tasks found. Add a new task to get started!"}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
           {processedTasks.map((task) => {
             const currentStep = getStepFromStatus(task.status);
             return (
               <div
                 key={task.task_id}
-                className={`bg-white p-4 rounded shadow text-gray-800 flex flex-col gap-4 ${
-                  task.important ? "border-l-4 border-yellow-400" : ""
+                className={`bg-white p-4 md:p-6 rounded-lg md:rounded-xl shadow border border-gray-200 flex flex-col gap-4 md:gap-6 hover:shadow-md md:hover:shadow-xl transition-shadow ${
+                  task.important ? "border-l-4 border-l-yellow-400" : ""
                 }`}
               >
                 {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 md:gap-4">
+                  <div className="flex items-start gap-2 md:gap-3 flex-1">
                     <button
                       onClick={() => toggleImportant(task.task_id)}
                       aria-label={
@@ -319,19 +320,19 @@ export default function TaskBoard() {
                           ? "Mark as not important"
                           : "Mark as important"
                       }
-                      className="flex-shrink-0"
+                      className="flex-shrink-0 mt-0.5 md:mt-1"
                     >
                       {task.important ? (
-                        <StarIconSolid className="w-5 h-5 text-yellow-400" />
+                        <StarIconSolid className="w-5 h-5 md:w-6 md:h-6 text-yellow-500" />
                       ) : (
-                        <StarIconOutline className="w-5 h-5 text-gray-400" />
+                        <StarIconOutline className="w-5 h-5 md:w-6 md:h-6 text-gray-400 hover:text-yellow-500" />
                       )}
                     </button>
-                    <span className="font-semibold text-sm md:text-base break-words">
+                    <span className="font-semibold text-base md:text-lg text-gray-900 break-words flex-1">
                       {task.task_name}
                     </span>
                   </div>
-                  <div className="flex gap-2 self-end sm:self-auto">
+                  <div className="flex gap-2 md:gap-3 self-end sm:self-auto">
                     <select
                       value={task.status}
                       onChange={(e) =>
@@ -340,7 +341,7 @@ export default function TaskBoard() {
                           e.target.value as TaskStatus
                         )
                       }
-                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                      className="border border-gray-300 rounded px-2 py-1 md:px-3 md:py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="toStart">To Start</option>
                       <option value="inProgress">In Progress</option>
@@ -348,7 +349,7 @@ export default function TaskBoard() {
                     </select>
                     <button
                       onClick={() => handleDeleteTask(task.task_id)}
-                      className="text-red-500 hover:text-red-700 text-sm md:text-base"
+                      className="text-red-500 hover:text-red-700 px-2 py-1 md:px-3 md:py-2 rounded hover:bg-red-50 transition-colors text-sm md:text-base"
                       aria-label="Delete task"
                     >
                       Delete
@@ -356,30 +357,30 @@ export default function TaskBoard() {
                   </div>
                 </div>
 
-                {/* Progress */}
+                {/* Progress Bar */}
                 <div className="flex items-center gap-2 md:gap-4 w-full">
                   {/* Step 1 */}
                   <div className="flex flex-col items-center flex-shrink-0">
                     <div
-                      className={`w-10 h-10 md:w-[60px] md:h-[60px] flex items-center justify-center rounded-full text-white text-xs font-bold ${
+                      className={`w-10 h-10 md:w-14 md:h-14 lg:w-16 lg:h-16 flex items-center justify-center rounded-full ${
                         currentStep === 1 ? "bg-pink-600" : "bg-gray-400"
                       }`}
                     >
                       <img
                         src="/cat4.png"
                         alt="To Start"
-                        className="w-full h-full object-contain"
+                        className="w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 object-contain"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =
                             "/placeholder-task.png";
                         }}
                       />
                     </div>
-                    <span className="text-[10px] mt-1 text-center">To start</span>
+                    <span className="text-xs font-medium mt-1 md:mt-2 text-center">To start</span>
                   </div>
 
                   <div
-                    className={`h-1 flex-1 ${
+                    className={`h-1 md:h-2 flex-1 rounded ${
                       currentStep >= 2 ? "bg-pink-600" : "bg-gray-300"
                     }`}
                   ></div>
@@ -387,25 +388,25 @@ export default function TaskBoard() {
                   {/* Step 2 */}
                   <div className="flex flex-col items-center flex-shrink-0">
                     <div
-                      className={`w-10 h-10 md:w-[60px] md:h-[60px] flex items-center justify-center rounded-full text-white text-xs font-bold ${
+                      className={`w-10 h-10 md:w-14 md:h-14 lg:w-16 lg:h-16 flex items-center justify-center rounded-full ${
                         currentStep === 2 ? "bg-pink-600" : "bg-gray-400"
                       }`}
                     >
                       <img
                         src="/cat2.png"
                         alt="In Progress"
-                        className="w-full h-full object-contain"
+                        className="w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 object-contain"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =
                             "/placeholder-task.png";
                         }}
                       />
                     </div>
-                    <span className="text-[10px] mt-1 text-center">In Progress</span>
+                    <span className="text-xs font-medium mt-1 md:mt-2 text-center">In Progress</span>
                   </div>
 
                   <div
-                    className={`h-1 flex-1 ${
+                    className={`h-1 md:h-2 flex-1 rounded ${
                       currentStep === 3 ? "bg-pink-600" : "bg-gray-300"
                     }`}
                   ></div>
@@ -413,21 +414,21 @@ export default function TaskBoard() {
                   {/* Step 3 */}
                   <div className="flex flex-col items-center flex-shrink-0">
                     <div
-                      className={`w-10 h-10 md:w-[60px] md:h-[60px] flex items-center justify-center rounded-full text-white text-xs font-bold ${
+                      className={`w-10 h-10 md:w-14 md:h-14 lg:w-16 lg:h-16 flex items-center justify-center rounded-full ${
                         currentStep === 3 ? "bg-pink-600" : "bg-gray-400"
                       }`}
                     >
                       <img
                         src="/cat5.png"
                         alt="Done"
-                        className="w-full h-full object-contain"
+                        className="w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10 object-contain"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src =
                             "/placeholder-task.png";
                         }}
                       />
                     </div>
-                    <span className="text-[10px] mt-1 text-center">Done</span>
+                    <span className="text-xs font-medium mt-1 md:mt-2 text-center">Done</span>
                   </div>
                 </div>
               </div>

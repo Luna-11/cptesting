@@ -349,62 +349,68 @@ export default function Timetable() {
         </div>
       </div>
       
-      {modalState.show && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white p-4 rounded-lg w-full max-w-xs mx-auto shadow-xl">
-            <h2 className="text-lg font-bold mb-3 text-[#3d312e]">
-              {modalState.isEditing ? "Edit" : "Add"} Event
-            </h2>
-            <p className="text-sm text-gray-600 mb-3">Time: {modalState.time} | Day: {modalState.day}</p>
-            <input
-              type="text"
-              value={modalState.event}
-              onChange={(e) => setModalState((prev) => ({ ...prev, event: e.target.value }))}
-              className="border border-gray-300 p-2 rounded w-full mb-3 text-sm"
-              placeholder="Event name"
-              autoFocus
+{modalState.show && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white p-4 rounded-lg w-full max-w-xs mx-auto shadow-xl">
+      <h2 className="text-lg font-bold mb-3 text-[#3d312e]">
+        {modalState.isEditing ? "Edit" : "Add"} Event
+      </h2>
+      <p className="text-sm text-gray-600 mb-3">Time: {modalState.time} | Day: {modalState.day}</p>
+      <input
+        type="text"
+        value={modalState.event}
+        onChange={(e) => setModalState((prev) => ({ ...prev, event: e.target.value }))}
+        className="border border-gray-300 p-2 rounded w-full mb-3 text-sm"
+        placeholder="Event name"
+        autoFocus
+      />
+      <div className="mb-4">
+        <label className="block mb-2 text-sm text-[#3d312e]">Color:</label>
+        <div className="flex flex-wrap gap-1">
+          {COLOR_OPTIONS.map((color) => (
+            <button
+              key={color.value}
+              type="button"
+              className={`w-6 h-6 rounded-full ${modalState.color === color.value ? "ring-2 ring-offset-1 ring-[#bba2a2]" : ""}`}
+              style={{ backgroundColor: color.value }}
+              onClick={() => setModalState((prev) => ({ ...prev, color: color.value }))}
+              title={color.name}
             />
-            <div className="mb-4">
-              <label className="block mb-2 text-sm text-[#3d312e]">Color:</label>
-              <div className="flex flex-wrap gap-1">
-                {COLOR_OPTIONS.map((color) => (
-                  <button
-                    key={color.value}
-                    className={`w-6 h-6 rounded-full ${modalState.color === color.value ? "ring-2 ring-offset-1 ring-[#bba2a2]" : ""}`}
-                    style={{ backgroundColor: color.value }}
-                    onClick={() => setModalState((prev) => ({ ...prev, color: color.value }))}
-                    title={color.name}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-2">
-                <button
-                  onClick={saveEvent}
-                  className="flex-1 px-3 py-2 bg-[#3d312e] text-[#f0eeee] rounded text-sm"
-                >
-                  {modalState.isEditing ? "Update" : "Add"}
-                </button>
-                {modalState.isEditing && (
-                  <button
-                    onClick={() => modalState.id && removeEvent(modalState.id)}
-                    className="px-3 py-2 bg-red-500 text-white rounded text-sm"
-                  >
-                    Delete
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={() => setModalState((prev) => ({ ...prev, show: false }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
-      )}
+      </div>
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <button
+            onClick={saveEvent}
+            className="flex-1 px-3 py-2 bg-[#3d312e] text-[#f0eeee] rounded text-sm"
+          >
+            {modalState.isEditing ? "Update" : "Add"}
+          </button>
+          {modalState.isEditing && (
+            <button
+              onClick={() => {
+                if (modalState.id) {
+                  removeEvent(modalState.id)
+                  setModalState((prev) => ({ ...prev, show: false }))
+                }
+              }}
+              className="px-3 py-2 bg-red-500 text-white rounded text-sm"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+        <button
+          onClick={() => setModalState((prev) => ({ ...prev, show: false }))}
+          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   )
 }

@@ -191,3 +191,78 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+
+// Add DELETE method
+export async function DELETE(request: NextRequest) {
+  try {
+    // Validate admin auth
+    const loggedIn = request.cookies.get('loggedIn')?.value;
+    const userId = request.cookies.get('userId')?.value;
+    const role = request.cookies.get('role')?.value;
+
+    if (!loggedIn || loggedIn !== 'true' || !userId || role !== 'admin') {
+      return NextResponse.json(
+        {
+          status: 'error',
+          error: 'Unauthorized - Admin access required',
+        },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const targetUserId = searchParams.get('userId');
+
+    if (!targetUserId) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          error: 'User ID is required',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Prevent admin from deleting themselves
+    if (parseInt(targetUserId) === parseInt(userId)) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          error: 'Cannot delete your own account',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Delete user from database
+    const [result] = await db.query<ResultSetHeader>(
+      'DELETE FROM user WHERE user_id = ?',
+      [targetUserId]
+    );
+
+    if (result.affectedRows === 0) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          error: 'User not found',
+        },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      status: 'success',
+      message: 'User deleted successfully',
+    });
+
+  } catch (error: any) {
+    console.error('Error in DELETE /api/admin/users:', error);
+    return NextResponse.json(
+      {
+        status: 'error',
+        error: error.message || 'Failed to delete user',
+      },
+      { status: 500 }
+    );
+  }
+}

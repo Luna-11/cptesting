@@ -579,17 +579,6 @@ export default function AdminDashboard() {
                             </button>
                           )}
                           <button 
-                            onClick={() => handleUserAction('suspend', user)}
-                            className={`p-2 rounded transition-colors ${
-                              user.status === 'active' 
-                                ? 'bg-yellow-500 text-white hover:bg-yellow-600' 
-                                : 'bg-green-500 text-white hover:bg-green-600'
-                            }`}
-                            title={user.status === 'active' ? 'Suspend' : 'Activate'}
-                          >
-                            {user.status === 'active' ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                          </button>
-                          <button 
                             onClick={() => handleUserAction('delete', user)}
                             className="p-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
                             title="Delete"

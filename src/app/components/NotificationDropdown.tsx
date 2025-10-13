@@ -92,33 +92,34 @@ export default function NotificationDropdown({
     }
   };
 
-const markAllAsRead = async () => {
-  try {
-    const response = await fetch("/api/notifications", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ all: true }),
-      credentials: "include", // ✅ needed for cookies
-    });
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch("/api/notifications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "markAllRead" }),
+        credentials: "include",
+      });
 
-    if (!response.ok) {
-      throw new Error("Failed to mark all as read");
+      if (!response.ok) {
+        throw new Error("Failed to mark all as read");
+      }
+
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, status: "read" }))
+      );
+
+      updateUnreadCount(0);
+      
+      // Optional: Show success message or close dropdown
+      // onClose();
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+      alert("Failed to mark all as read. Please try again.");
     }
-
-    setNotifications((prev) =>
-      prev.map((n) => ({ ...n, status: "read" }))
-    );
-
-    // also reset unread count to 0
-    updateUnreadCount(0);
-  } catch (error) {
-    console.error(error);
-  }
-};
-
-
+  };
 
   const handleNotificationClick = (n: Notification) => {
     if (n.status === "unread") {
@@ -154,6 +155,9 @@ const markAllAsRead = async () => {
     return message;
   };
 
+  // Check if there are any unread notifications
+  const hasUnreadNotifications = notifications.some(n => n.status === 'unread');
+
   return (
     <div
       className="absolute right-0 mt-2 w-96 bg-white rounded-md shadow-lg overflow-hidden z-50 border border-gray-300"
@@ -162,13 +166,20 @@ const markAllAsRead = async () => {
       {/* Header */}
       <div className="p-4 border-b border-gray-300 bg-[#d8c7c7] flex justify-between items-center">
         <h3 className="text-lg font-semibold text-[#2b211e]">Notifications</h3>
-        <button
-          onClick={onClose}
-          className="text-[#2b211e] hover:text-[#5d4b47] text-sm px-3 py-1 rounded transition-colors duration-300"
-          style={{ background: "rgba(0,0,0,0.1)" }}
-        >
-          Close
-        </button>
+        <div className="flex items-center gap-2">
+          {hasUnreadNotifications && (
+            <span className="text-xs bg-red-500 text-white px-2 py-1 rounded-full">
+              {notifications.filter(n => n.status === 'unread').length} new
+            </span>
+          )}
+          <button
+            onClick={onClose}
+            className="text-[#2b211e] hover:text-[#5d4b47] text-sm px-3 py-1 rounded transition-colors duration-300"
+            style={{ background: "rgba(0,0,0,0.1)" }}
+          >
+            Close
+          </button>
+        </div>
       </div>
 
       {/* Body */}
@@ -188,7 +199,7 @@ const markAllAsRead = async () => {
             <div
               key={n.notification_id}
               className={`p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition ${
-                n.status === "unread" ? "bg-blue-50" : ""
+                n.status === "unread" ? "bg-blue-50 border-l-4 border-l-blue-500" : ""
               }`}
               onClick={() => handleNotificationClick(n)}
             >
@@ -223,14 +234,16 @@ const markAllAsRead = async () => {
       </div>
 
       {/* Footer → Clear All */}
-      <div className="p-3 border-t border-gray-300 text-center bg-gray-100">
-        <button
-          onClick={markAllAsRead}
-          className="text-sm text-red-600 hover:text-red-800 font-medium transition-colors duration-300"
-        >
-          Clear all
-        </button>
-      </div>
+      {notifications.length > 0 && hasUnreadNotifications && (
+        <div className="p-3 border-t border-gray-300 text-center bg-gray-50">
+          <button
+            onClick={markAllAsRead}
+            className="text-sm bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded transition-colors duration-300 w-full"
+          >
+            Clear all notifications
+          </button>
+        </div>
+      )}
     </div>
   );
 }

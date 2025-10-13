@@ -14,7 +14,7 @@ interface Purchase {
 }
 
 const PaymentPage = () => {
-  const MONTHLY_PRICE = 49.99;
+  const MONTHLY_PRICE = 5;
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [selectedMethod, setSelectedMethod] = useState<"KBZPay" | "WavePay">("KBZPay");
   const [preview, setPreview] = useState<string>("");

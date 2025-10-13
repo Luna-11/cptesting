@@ -22,7 +22,6 @@ const DEFAULT_PROFILE = {
   description:
     "With over 5 years of experience in the design industry, I specialize in creating visually stunning illustrations and brand identities that tell compelling stories.",
   bannerText: "The Sky tells me there are *No limits* and curiosity tells me to *Explore*",
-  occupation: "Graphic Designer & Illustrator",
 }
 
 // File validation constants
@@ -72,37 +71,47 @@ export default function ProfilePage() {
     return null
   }
 
-  const generateStudyStreaks = (studySessions: any[]) => {
-    const streaksMap: Record<string, number> = {};
+const generateStudyStreaks = (studySessions: any[]) => {
+  const streaksMap: Record<string, number> = {};
 
-    studySessions.forEach(session => {
-      const date = session.created_at ? session.created_at.split('T')[0] : 
-                  session.start_time ? session.start_time.split('T')[0] : 
-                  new Date().toISOString().split('T')[0];
-      
-      let hours = 1; 
-      
-      if (session.start_time && session.end_time) {
-        try {
-          const start = new Date(session.start_time);
-          const end = new Date(session.end_time);
-          const durationMs = end.getTime() - start.getTime();
-          hours = durationMs / (1000 * 60 * 60);
-          hours = Math.max(0.5, Math.round(hours * 100) / 100);
-        } catch (error) {
-          console.error("Error calculating duration:", error);
-          hours = 1;
-        }
+  studySessions.forEach(session => {
+    const date = session.created_at ? session.created_at.split('T')[0] : 
+                session.start_time ? session.start_time.split('T')[0] : 
+                new Date().toISOString().split('T')[0];
+    
+    let hours = 0;
+    
+    // Use the duration field from database (in seconds) if it exists
+    if (session.duration !== undefined && session.duration !== null && session.duration > 0) {
+      // Convert seconds to hours
+      hours = session.duration / (60 * 60); // 3600 seconds in an hour
+      hours = Math.max(0.1, Math.round(hours * 10) / 10); // Keep 1 decimal place, min 0.1
+    } 
+    // Fallback to start_time/end_time calculation if duration is not available
+    else if (session.start_time && session.end_time) {
+      try {
+        const start = new Date(session.start_time);
+        const end = new Date(session.end_time);
+        const durationMs = end.getTime() - start.getTime();
+        hours = durationMs / (1000 * 60 * 60);
+        hours = Math.max(0.1, Math.round(hours * 10) / 10);
+      } catch (error) {
+        console.error("Error calculating duration:", error);
+        hours = 1; // Default fallback
       }
+    } else {
+      // If no duration data available, assume 1 hour
+      hours = 1;
+    }
 
-      streaksMap[date] = (streaksMap[date] || 0) + hours;
-    });
+    streaksMap[date] = (streaksMap[date] || 0) + hours;
+  });
 
-    return Object.entries(streaksMap).map(([date, hours]) => ({ 
-      date, 
-      hours: Math.round(hours)
-    }));
-  }
+  return Object.entries(streaksMap).map(([date, hours]) => ({ 
+    date, 
+    hours // Keep decimal precision for more accurate coloring
+  }));
+}
 
   // Fetch profile data
   useEffect(() => {
@@ -204,12 +213,13 @@ export default function ProfilePage() {
     }
 
     const getColor = (hours: number) => {
-      if (hours === 0) return "bg-gray-100"
-      if (hours <= 1) return "bg-blue-100"
-      if (hours <= 2) return "bg-blue-200"
-      if (hours <= 3) return "bg-blue-300"
-      if (hours <= 4) return "bg-blue-400"
-      return "bg-blue-500"
+      if (hours === 0) return "bg-gray-100"        // No study
+      if (hours < 0.5) return "bg-blue-100"       // Less than 30 minutes
+      if (hours < 1) return "bg-blue-200"         // 30-59 minutes  
+      if (hours < 2) return "bg-blue-300"         // 1-1.9 hours
+      if (hours < 3) return "bg-blue-400"         // 2-2.9 hours
+      if (hours < 4) return "bg-blue-500"         // 3-3.9 hours
+      return "bg-blue-600"                        // 4+ hours
     }
 
     return (
@@ -1155,7 +1165,6 @@ export default function ProfilePage() {
 
             <div className="mt-4 md:mt-6 text-center">
               <h2 className="text-xl md:text-2xl font-bold text-[#3d312e]">{formData.username}</h2>
-              <p className="text-sm md:text-base text-[#3d312e]">Graphic Designer & Illustrator</p>
               <p className="text-xs md:text-sm text-[#3d312e] mt-2 italic">"{formData.bio}"</p>
             </div>
 

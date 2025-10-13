@@ -347,26 +347,6 @@ export default function UserReportPage() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-
-            {/* Daily Study Hours */}
-            <div className="border p-4 rounded shadow bg-white md:col-span-2">
-              <h2 className="text-lg font-semibold mb-4">Daily Study Time</h2>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={validatedStudyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis tickFormatter={formatYAxisTick} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                  <Bar 
-                    dataKey="hours" 
-                    fill="#5c4033" 
-                    name="Study Time"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
           </div>
         </div>
       </div>

@@ -162,6 +162,7 @@ export async function POST(req: Request) {
     // 1. Validate user authentication
     const cookieStore = await cookies();
     const userId = cookieStore.get("userId")?.value;
+    const userRole = cookieStore.get("role")?.value; // Get user role
 
     if (!userId) {
       return NextResponse.json(
@@ -215,7 +216,7 @@ export async function POST(req: Request) {
     }
 
     // Validate amount calculation
-    const expectedAmount = numericMonths * 49.99;
+    const expectedAmount = numericMonths * 5;
     if (Math.abs(numericAmount - expectedAmount) > 0.01) {
       return NextResponse.json(
         { error: "Invalid amount calculation" },
@@ -299,37 +300,40 @@ export async function POST(req: Request) {
         );
       }
 
-      // 7. Insert user notification
-      await connection.execute<ResultSetHeader>(
-        `INSERT INTO notifications 
-         (user_id, payment_id, title, message, type, status, purchase_status, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
-        [
-          numericUserId,
-          result.insertId,
-          "Payment Submitted",
-          `Your payment of $${numericAmount.toFixed(2)} for ${numericMonths} month(s) is under review.`,
-          "user",
-          "unread",
-          "pending",
-        ]
-      );
-
-      // 8. Insert admin notification
-      await connection.execute<ResultSetHeader>(
-        `INSERT INTO notifications 
-         (user_id, payment_id, title, message, type, status, purchase_status, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
-        [
-          numericUserId,
-          result.insertId,
-          "New Payment Submission",
-          `User ${numericUserId} submitted a payment of $${numericAmount.toFixed(2)} for ${numericMonths} month(s).`,
-          "admin",
-          "unread",
-          "pending",
-        ]
-      );
+      // 7. CREATE ONLY ONE NOTIFICATION BASED ON USER ROLE
+      if (userRole === 'admin') {
+        // If admin is submitting payment, create admin notification
+        await connection.execute<ResultSetHeader>(
+          `INSERT INTO notifications 
+           (user_id, payment_id, title, message, type, status, purchase_status, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+          [
+            numericUserId,
+            result.insertId,
+            "Payment Submitted",
+            `Admin payment of $${numericAmount.toFixed(2)} for ${numericMonths} month(s) is under review.`,
+            "admin", // Admin type
+            "unread",
+            "pending",
+          ]
+        );
+      } else {
+        // Regular user - create user notification
+        await connection.execute<ResultSetHeader>(
+          `INSERT INTO notifications 
+           (user_id, payment_id, title, message, type, status, purchase_status, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+          [
+            numericUserId,
+            result.insertId,
+            "Payment Submitted",
+            `Your payment of $${numericAmount.toFixed(2)} for ${numericMonths} month(s) is under review.`,
+            "user", // User type
+            "unread",
+            "pending",
+          ]
+        );
+      }
 
       await connection.commit();
 

@@ -17,7 +17,6 @@ const DEFAULT_PROFILE = {
   description:
     "With over 5 years of experience in the design industry, I specialize in creating visually stunning illustrations and brand identities that tell compelling stories.",
   bannerText: "The Sky tells me there are *No limits* and curiosity tells me to *Explore*",
-  occupation: "Graphic Designer & Illustrator",
 }
 
 // Helper function to validate database connection
@@ -172,15 +171,17 @@ const deleteOldImage = async (imagePath: string): Promise<void> => {
 };
 
 export async function GET() {
-  const cookieStore = await cookies()
-  const userId = cookieStore.get("userId")?.value
-
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized - Please log in" }, { status: 401 })
-  }
+  let connection;
 
   try {
-    const connection = await getDatabaseConnection()
+    const cookieStore = await cookies()
+    const userId = cookieStore.get("userId")?.value
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized - Please log in" }, { status: 401 })
+    }
+
+    connection = await getDatabaseConnection()
 
     const [userRows] = await connection.execute(
       `SELECT name FROM user WHERE user_id = ?`,
@@ -192,8 +193,8 @@ export async function GET() {
       [userId]
     )
 
-    const [notesRows] = await connection.execute(
-      `
+    // Check if duration column exists in study_sessions table
+    let notesQuery = `
       SELECT 
         ss.id,
         ss.subject_id,
@@ -206,11 +207,37 @@ export async function GET() {
       JOIN subjects s ON ss.subject_id = s.id
       WHERE ss.user_id = ?
       ORDER BY ss.created_at DESC
-      `,
-      [userId]
-    )
+    `;
 
-    connection.release()
+    // Try to include duration if the column exists
+    try {
+      // Test if duration column exists
+      const [testColumns] = await connection.execute(
+        `SHOW COLUMNS FROM study_sessions LIKE 'duration'`
+      );
+      
+      if ((testColumns as any[]).length > 0) {
+        notesQuery = `
+          SELECT 
+            ss.id,
+            ss.subject_id,
+            s.name AS subject,
+            ss.notes,
+            ss.duration,
+            ss.start_time,
+            ss.end_time,
+            ss.created_at
+          FROM study_sessions ss
+          JOIN subjects s ON ss.subject_id = s.id
+          WHERE ss.user_id = ?
+          ORDER BY ss.created_at DESC
+        `;
+      }
+    } catch (error) {
+      console.log('Duration column not found, using fallback query');
+    }
+
+    const [notesRows] = await connection.execute(notesQuery, [userId])
 
     const users = userRows as any[]
     if (users.length === 0) {
@@ -231,13 +258,23 @@ export async function GET() {
         intro: profile.intro || DEFAULT_PROFILE.intro,
         description: profile.description || DEFAULT_PROFILE.description,
         bannerText: profile.banner_text || DEFAULT_PROFILE.bannerText,
-        occupation: profile.occupation || DEFAULT_PROFILE.occupation,
       },
       studyNotes: notesRows,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Database error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ 
+      error: "Internal server error",
+      details: error.message 
+    }, { status: 500 })
+  } finally {
+    if (connection) {
+      try {
+        connection.release();
+      } catch (releaseError) {
+        console.error('Error releasing connection:', releaseError);
+      }
+    }
   }
 }
 
@@ -271,7 +308,6 @@ export async function PUT(request: Request) {
         intro: formData.get('intro') as string,
         description: formData.get('description') as string,
         bannerText: formData.get('bannerText') as string,
-        occupation: formData.get('occupation') as string,
       };
     } else {
       // Assume JSON
@@ -360,10 +396,6 @@ export async function PUT(request: Request) {
           updateFields.push("banner_text = ?")
           updateValues.push(data.bannerText)
         }
-        if (data.occupation !== undefined && data.occupation !== existingProfile.occupation) {
-          updateFields.push("occupation = ?")
-          updateValues.push(data.occupation)
-        }
 
         if (updateFields.length > 0) {
           updateValues.push(numericUserId)
@@ -384,8 +416,8 @@ export async function PUT(request: Request) {
         // Create new profile
         await connection.execute(
           `INSERT INTO user_profiles 
-           (user_id, profile_image, banner_image, bio, intro, description, banner_text, occupation)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           (user_id, profile_image, banner_image, bio, intro, description, banner_text)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
           [
             numericUserId,
             profileImagePath || DEFAULT_PROFILE.profileImage,
@@ -394,7 +426,6 @@ export async function PUT(request: Request) {
             data.intro || DEFAULT_PROFILE.intro,
             data.description || DEFAULT_PROFILE.description,
             data.bannerText || DEFAULT_PROFILE.bannerText,
-            data.occupation || DEFAULT_PROFILE.occupation,
           ],
         )
       }

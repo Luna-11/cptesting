@@ -13,20 +13,16 @@ body {
 }
 
 /* ===== COMPONENT STYLES ===== */
-
-/* Sidebar */
 .sidebar {
   background-color: #3d312e;
   color: #f0eeee;
 }
 
-/* Navbar */
 .navbar {
   background-color: #3d312e;
   color: #f0eeee;
 }
 
-/* Button Styles */
 .button {
   background: #f0eeee;
   color: #3d312e;
@@ -55,9 +51,7 @@ body {
   color: #f0eeee;
 }
 
-/* ===== ABOUT US / SLIDES STYLES ===== */
-
-/* Slide Container Styles */
+/* ===== SLIDES STYLES ===== */
 .slides-container {
   scroll-snap-type: y mandatory;
   overflow-y: scroll;
@@ -76,31 +70,6 @@ body {
   box-sizing: border-box;
 }
 
-/* Header Styles */
-.slide-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-}
-
-.slide-logo {
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-
-.slide-nav a {
-  color: white;
-  margin-left: 1.5rem;
-  text-decoration: none;
-  transition: opacity 0.2s;
-}
-
-.slide-nav a:hover {
-  opacity: 0.8;
-}
-
-/* Content Styles */
 .slide-content {
   max-width: 1200px;
   margin: auto;
@@ -131,7 +100,6 @@ body {
   margin-bottom: 3rem;
 }
 
-/* Grid Layout */
 .content-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -143,7 +111,6 @@ body {
   max-width: 500px;
 }
 
-/* Buttons */
 .cta-button {
   background: white;
   color: #0f0c29;
@@ -162,7 +129,6 @@ body {
   box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
 }
 
-/* Lists */
 .steps-list {
   margin: 2rem 0;
   padding-left: 1.5rem;
@@ -201,7 +167,6 @@ body {
   font-size: 1.5rem;
 }
 
-/* Planet Image Styles */
 .planet-image {
   display: flex;
   justify-content: center;
@@ -215,13 +180,12 @@ body {
   object-fit: contain;
 }
 
-/* For the first slide specifically */
+/* First slide specific styles */
 .bg-space-gradient-1 .planet-image img {
   max-width: 400px;
   max-height: 400px;
 }
 
-/* Adjust content layout for first slide */
 .bg-space-gradient-1 .slide-content {
   text-align: center;
   align-items: center;
@@ -247,11 +211,18 @@ body {
   background-color: #3d312e;
 }
 
-/* ===== RESPONSIVE STYLES ===== */
+/* Dark background text adjustments */
+.bg-space-dark-2 .features-list li::before,
+.bg-space-dark-3 .features-list li::before {
+  color: #f0eeee;
+}
 
-/* Tablet Styles (768px - 1024px) */
+.bg-space-dark-3 .steps-list li::before {
+  color: #f0eeee;
+}
+
+/* ===== RESPONSIVE STYLES ===== */
 @media (max-width: 1024px) {
-  /* Slides adjustments */
   .slide {
     padding: 0.5rem 1.5rem;
   }
@@ -298,9 +269,7 @@ body {
   }
 }
 
-/* Mobile Styles (up to 767px) */
 @media (max-width: 767px) {
-  /* Slides mobile adjustments */
   .slide {
     padding: 0.5rem 1rem;
     height: auto;
@@ -383,25 +352,9 @@ body {
     font-size: 0.9rem;
     margin-top: 1.5rem;
   }
-  
-  /* Adjust first slide specifically for mobile */
-  .bg-space-gradient-1 .slide-content {
-    text-align: center;
-  }
-  
-  /* Adjust list item markers for dark backgrounds */
-  .bg-space-dark-3 .steps-list li::before {
-    color: #f0eeee;
-  }
-  
-  .bg-space-dark-2 .features-list li::before {
-    color: #3d312e;
-  }
 }
 
-/* Small Mobile Styles (up to 480px) */
 @media (max-width: 480px) {
-  /* Slides small mobile adjustments */
   .slide {
     padding: 0.5rem 0.8rem;
   }

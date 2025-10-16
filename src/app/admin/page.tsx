@@ -476,10 +476,10 @@ export default function AdminDashboard() {
     };
 
     return (
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
           <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-10 text-gray-400" />
             <input
               type="text"
               placeholder="Search users..."
@@ -701,59 +701,58 @@ const SubscriptionsTab = () => {
     };
   };
 
-
-// Calculate total subscription for a user (accumulating all approved payments)
-const calculateUserSubscription = (userId: number) => {
-  const userPayments = payments.filter(p => p.user_id === userId && p.status === 'Approved' && p.approved_at);
-  
-  if (userPayments.length === 0) return null;
-
-  // Sort payments by approval date (oldest first)
-  const sortedPayments = userPayments.sort((a, b) => {
-    const dateA = new Date(a.approved_at!).getTime();
-    const dateB = new Date(b.approved_at!).getTime();
-    return dateA - dateB;
-  });
-
-  // Start with the first payment
-  const firstPayment = sortedPayments[0];
-  let currentEndDate = new Date(firstPayment.approved_at!);
-  currentEndDate.setMonth(currentEndDate.getMonth() + firstPayment.months);
-  
-  let totalMonthsPurchased = firstPayment.months;
-
-  // Process subsequent payments
-  for (let i = 1; i < sortedPayments.length; i++) {
-    const payment = sortedPayments[i];
-    const paymentDate = new Date(payment.approved_at!);
+  // Calculate total subscription for a user (accumulating all approved payments)
+  const calculateUserSubscription = (userId: number) => {
+    const userPayments = payments.filter(p => p.user_id === userId && p.status === 'Approved' && p.approved_at);
     
-    // If this payment was made BEFORE the current subscription ends, extend it
-    if (paymentDate <= currentEndDate) {
-      currentEndDate.setMonth(currentEndDate.getMonth() + payment.months);
-    } else {
-      // If payment was made AFTER current subscription ended, start new period
-      currentEndDate = new Date(paymentDate);
-      currentEndDate.setMonth(currentEndDate.getMonth() + payment.months);
+    if (userPayments.length === 0) return null;
+
+    // Sort payments by approval date (oldest first)
+    const sortedPayments = userPayments.sort((a, b) => {
+      const dateA = new Date(a.approved_at!).getTime();
+      const dateB = new Date(b.approved_at!).getTime();
+      return dateA - dateB;
+    });
+
+    // Start with the first payment
+    const firstPayment = sortedPayments[0];
+    let currentEndDate = new Date(firstPayment.approved_at!);
+    currentEndDate.setMonth(currentEndDate.getMonth() + firstPayment.months);
+    
+    let totalMonthsPurchased = firstPayment.months;
+
+    // Process subsequent payments
+    for (let i = 1; i < sortedPayments.length; i++) {
+      const payment = sortedPayments[i];
+      const paymentDate = new Date(payment.approved_at!);
+      
+      // If this payment was made BEFORE the current subscription ends, extend it
+      if (paymentDate <= currentEndDate) {
+        currentEndDate.setMonth(currentEndDate.getMonth() + payment.months);
+      } else {
+        // If payment was made AFTER current subscription ended, start new period
+        currentEndDate = new Date(paymentDate);
+        currentEndDate.setMonth(currentEndDate.getMonth() + payment.months);
+      }
+      
+      totalMonthsPurchased += payment.months;
     }
-    
-    totalMonthsPurchased += payment.months;
-  }
 
-  const now = new Date();
-  const timeDiff = currentEndDate.getTime() - now.getTime();
-  const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-  const monthsLeft = daysLeft / 30.44;
+    const now = new Date();
+    const timeDiff = currentEndDate.getTime() - now.getTime();
+    const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+    const monthsLeft = daysLeft / 30.44;
 
-  const earliestStart = sortedPayments[0].approved_at!;
+    const earliestStart = sortedPayments[0].approved_at!;
 
-  return {
-    startDate: earliestStart.split('T')[0],
-    endDate: currentEndDate.toISOString().split('T')[0],
-    monthsLeft: Math.max(0, Math.floor(monthsLeft * 10) / 10), // 1 decimal place
-    isActive: now <= currentEndDate,
-    totalMonthsPurchased: totalMonthsPurchased
+    return {
+      startDate: earliestStart.split('T')[0],
+      endDate: currentEndDate.toISOString().split('T')[0],
+      monthsLeft: Math.max(0, Math.floor(monthsLeft * 10) / 10), // 1 decimal place
+      isActive: now <= currentEndDate,
+      totalMonthsPurchased: totalMonthsPurchased
+    };
   };
-};
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -836,7 +835,7 @@ const calculateUserSubscription = (userId: number) => {
   }, [filterPaymentStatus]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* Error/Success Message */}
       {error && (
         <div className={`p-4 rounded-lg ${
@@ -855,7 +854,7 @@ const calculateUserSubscription = (userId: number) => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+      <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-[#3d312e]">Payment Approvals</h3>
           <div className="flex items-center gap-3">
@@ -922,17 +921,10 @@ const calculateUserSubscription = (userId: number) => {
                   return (
                     <tr key={payment.payment_id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                            <span className="text-gray-600 font-medium">
-                              {payment.user_name?.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{payment.user_name}</div>
-                            <div className="text-sm text-gray-500">{payment.user_email}</div>
-                            <div className="text-xs text-gray-400">ID: {payment.user_id}</div>
-                          </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{payment.user_name}</div>
+                          <div className="text-sm text-gray-500">{payment.user_email}</div>
+                          <div className="text-xs text-gray-400">ID: {payment.user_id}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -1049,16 +1041,9 @@ const calculateUserSubscription = (userId: number) => {
                   <div>
                     <h4 className="text-sm font-medium text-gray-700 mb-2">User Information</h4>
                     <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex items-center mb-3">
-                        <div className="flex-shrink-0 h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                          <span className="text-blue-600 font-medium">
-                            {selectedPayment.user_name?.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-lg font-medium text-gray-900">{selectedPayment.user_name}</div>
-                          <div className="text-sm text-gray-500">{selectedPayment.user_email}</div>
-                        </div>
+                      <div className="mb-3">
+                        <div className="text-lg font-medium text-gray-900">{selectedPayment.user_name}</div>
+                        <div className="text-sm text-gray-500">{selectedPayment.user_email}</div>
                       </div>
                       <div className="text-sm text-gray-600">
                         User ID: {selectedPayment.user_id}
@@ -1365,7 +1350,7 @@ const calculateUserSubscription = (userId: number) => {
     <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Header */}
       <div className="bg-[#3d312e] shadow-sm border-b flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+        <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-[#f0eeee]">Admin Dashboard</h1>
           <div className="flex items-center space-x-4">
             {/* Notification Bell with Dropdown */}
@@ -1454,7 +1439,7 @@ const calculateUserSubscription = (userId: number) => {
 
       {/* Navigation Tabs */}
       <div className="bg-[#3d312e] shadow-sm flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             {(['users', 'subscriptions', 'engagement'] as const).map((tab) => (
               <button
@@ -1474,7 +1459,7 @@ const calculateUserSubscription = (userId: number) => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+      <div className="flex-1 max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-2 w-full">
         {error && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4">
             <div className="flex">

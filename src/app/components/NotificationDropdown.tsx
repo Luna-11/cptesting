@@ -113,8 +113,6 @@ export default function NotificationDropdown({
 
       updateUnreadCount(0);
       
-      // Optional: Show success message or close dropdown
-      // onClose();
     } catch (error) {
       console.error("Error marking all as read:", error);
       alert("Failed to mark all as read. Please try again.");

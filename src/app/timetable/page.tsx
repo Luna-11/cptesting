@@ -178,8 +178,7 @@ export default function Timetable() {
 
   const saveEvent = useCallback(async () => {
     if (!modalState.event.trim()) return
-
-    try {
+   try {
       const response = await fetch("/api/timetable", {
         method: "POST",
         headers: {
@@ -198,7 +197,6 @@ export default function Timetable() {
         const errorData = await response.json()
         throw new Error(errorData.message || "Failed to save event")
       }
-
       const responseData = await response.json()
       const savedEvent = responseData.data
 

@@ -18,7 +18,6 @@ interface AdminNotification extends RowDataPacket {
   category: string;
 }
 
-// ✅ Database connection helper
 const getDatabaseConnection = async () => {
   try {
     const connection = await db.getConnection();
@@ -34,47 +33,63 @@ export async function GET(req: Request) {
   let connection;
 
   try {
-    // 1. Connect to DB
     connection = await getDatabaseConnection();
 
-    // 2. Fetch notifications
+
+    const [allUser17Notifications] = await connection.execute<AdminNotification[]>(
+      `SELECT * FROM notifications WHERE user_id = 17 ORDER BY created_at DESC`
+    );
+
+    console.log("ALL notifications for user 17:", allUser17Notifications);
+
+
     const [notifications] = await connection.execute<AdminNotification[]>(
-      `SELECT n.notification_id, n.user_id, n.payment_id, n.title, n.message, 
-              n.type, n.status, n.purchase_status, n.link, n.created_at,
-              u.name AS user_name, u.email AS user_email,
-              CASE 
-                WHEN n.purchase_status = 'pending' THEN 'Payment Submission'
-                ELSE 'Payment Update'
-              END AS category
+      `SELECT 
+         n.notification_id, 
+         n.user_id, 
+         n.payment_id, 
+         n.title, 
+         n.message, 
+         n.type, 
+         n.status, 
+         n.purchase_status, 
+         n.link, 
+         n.created_at,
+         u.name AS user_name, 
+         u.email AS user_email,
+         CASE 
+           WHEN n.purchase_status = 'pending' THEN 'Payment Submission'
+           ELSE 'Payment Update'
+         END AS category
        FROM notifications n
        JOIN user u ON n.user_id = u.user_id
-       WHERE n.type = 'admin'
+       WHERE n.type IN ('admin', 'system')
+         AND (n.payment_id IS NOT NULL OR n.purchase_status IS NOT NULL)
        ORDER BY n.created_at DESC
-       LIMIT 10`
+       LIMIT 20`
     );
+
+    console.log("Current query results count:", notifications.length);
+    
+    // Find which user 17 notifications are missing
+    const missingNotifications = allUser17Notifications.filter(notif => 
+      !notifications.some(n => n.notification_id === notif.notification_id)
+    );
+    
+    console.log("User 17 notifications missing from results:", missingNotifications);
 
     return NextResponse.json({
       status: "success",
       message: "Fetched admin notifications",
       data: notifications,
+      debug: {
+        allUser17Notifications,
+        missingNotifications,
+        currentQueryCount: notifications.length
+      }
     });
   } catch (error: any) {
     console.error("Fetch admin notifications error:", error);
-
-    if (
-      error.message.includes("Database connection unavailable") ||
-      error.code === "ECONNRESET"
-    ) {
-      return NextResponse.json(
-        {
-          status: "error",
-          message: "Database temporarily unavailable. Please try again later.",
-          details: "Connection reset",
-        },
-        { status: 503 }
-      );
-    }
-
     return NextResponse.json(
       {
         status: "error",
@@ -85,11 +100,7 @@ export async function GET(req: Request) {
     );
   } finally {
     if (connection) {
-      try {
-        connection.release();
-      } catch (releaseError) {
-        console.error("Error releasing connection:", releaseError);
-      }
+      connection.release();
     }
   }
 }

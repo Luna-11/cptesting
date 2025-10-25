@@ -683,6 +683,7 @@ const SubscriptionsTab = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [localMessage, setLocalMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null);
 
   // Calculate subscription period for a single payment
   const calculateSubscriptionPeriod = (payment: Payment) => {
@@ -701,7 +702,7 @@ const SubscriptionsTab = () => {
     };
   };
 
-  // Calculate total subscription for a user (accumulating all approved payments)
+  // Calculate total subscription for a user 
   const calculateUserSubscription = (userId: number) => {
     const userPayments = payments.filter(p => p.user_id === userId && p.status === 'Approved' && p.approved_at);
     
@@ -780,7 +781,7 @@ const SubscriptionsTab = () => {
       }
     } catch (err) {
       console.error('Payments fetch error:', err);
-      setError('Failed to fetch subscription payments');
+      setLocalMessage({text: 'Failed to fetch subscription payments', type: 'error'});
     } finally {
       setLoadingPayments(false);
     }
@@ -804,16 +805,27 @@ const SubscriptionsTab = () => {
         setRejectionReason('');
         setShowDetailModal(false);
         setShowRejectModal(false);
-        setError(null);
         
-        setError(`Payment successfully ${action === 'approve' ? 'approved' : 'rejected'}!`);
-        setTimeout(() => setError(null), 3000);
+        // Use local message instead of setting the global error state
+        setLocalMessage({
+          text: `Payment successfully ${action === 'approve' ? 'approved' : 'rejected'}!`,
+          type: 'success'
+        });
+        
+        // Auto-clear the success message after 3 seconds
+        setTimeout(() => setLocalMessage(null), 3000);
       } else {
-        setError(response.error || `Failed to ${action} payment`);
+        setLocalMessage({
+          text: response.error || `Failed to ${action} payment`,
+          type: 'error'
+        });
       }
     } catch (err) {
       console.error(`Failed to ${action} payment:`, err);
-      setError(err instanceof Error ? err.message : `Failed to ${action} payment`);
+      setLocalMessage({
+        text: err instanceof Error ? err.message : `Failed to ${action} payment`,
+        type: 'error'
+      });
     } finally {
       setActionLoading(null);
     }
@@ -836,20 +848,20 @@ const SubscriptionsTab = () => {
 
   return (
     <div className="space-y-2">
-      {/* Error/Success Message */}
-      {error && (
+      {/* Local success/error message - ONLY appears in this tab */}
+      {localMessage && (
         <div className={`p-4 rounded-lg ${
-          error.includes('successfully') 
+          localMessage.type === 'success'
             ? 'bg-green-50 border border-green-200 text-green-800' 
             : 'bg-red-50 border border-red-200 text-red-800'
         }`}>
           <div className="flex items-center">
-            {error.includes('successfully') ? (
+            {localMessage.type === 'success' ? (
               <CheckCircle className="h-5 w-5 mr-2" />
             ) : (
               <XCircle className="h-5 w-5 mr-2" />
             )}
-            <span className="text-sm">{error}</span>
+            <span className="text-sm">{localMessage.text}</span>
           </div>
         </div>
       )}

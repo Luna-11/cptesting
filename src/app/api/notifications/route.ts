@@ -157,7 +157,7 @@ export async function PUT(req: Request) {
     // 2. Add a notification for the user
     const message =
       status === "approved"
-        ? `Your payment for purchase #${purchaseId} has been approved. 🎉`
+        ? `Payment is approved. #${purchaseId} Please log out and log back in to unlock all Pro features!`
         : `Your payment for purchase #${purchaseId} has been ${status}.`;
 
     await db.execute(

@@ -58,11 +58,12 @@ export default function HomePage() {
                   Perfect for students seeking enhanced features to boost productivity and track their study journey with ease.
                 </p>
                 <div className="mt-6 flex justify-center">
-                  <Link href="purchases">
+                <Link href="/register">
                   <button className="button2 text-white font-medium px-5 py-2 rounded-lg transition duration-200">
                     Purchase
                   </button>
-                  </Link>
+                </Link>
+
                 </div>
               </div>
             </div>
